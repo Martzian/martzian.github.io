@@ -1,0 +1,19 @@
+---
+import type { Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+import { href } from '../i18n/paths';
+
+interface Props { lang: Lang; crumb: string; glow?: string }
+const { lang, crumb, glow } = Astro.props;
+const t = ui[lang];
+---
+<section class="chamber-head" style={glow ? `--glow:${glow}` : undefined}>
+  <nav class="crumbs" aria-label={t.crumbAria}>
+    <a href={href(lang)}>{t.facility}</a> / <span aria-current="page">{crumb}</span>
+  </nav>
+  <div class="chamber-head__row">
+    <slot name="title" />
+    <slot name="lede" />
+  </div>
+  <slot />
+</section>

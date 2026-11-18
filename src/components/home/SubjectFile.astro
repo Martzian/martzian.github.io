@@ -1,0 +1,48 @@
+---
+import type { Lang } from '../../data/site';
+import { ui } from '../../i18n/ui';
+import { asset } from '../../i18n/paths';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].home;
+---
+<section class="wrap subject" aria-labelledby="subject-title">
+  <div class="subject__card hud-frame reveal">
+    <span class="c c--tl"></span><span class="c c--tr"></span><span class="c c--bl"></span><span class="c c--br"></span>
+    <figure class="subject__photo">
+      <img src={asset('img/martzian-480.webp')} width="480" height="480" loading="lazy" decoding="async" alt={t.alt} />
+      <figcaption class="mono">ID · 001 · MZ</figcaption>
+    </figure>
+    <div class="subject__text">
+      <p class="kicker">{t.aboutK}</p>
+      <h2 id="subject-title">{t.aboutH}</h2>
+      <p>{t.aboutP1}</p>
+      <p>{t.aboutP2}</p>
+      <dl class="subject__traits">
+        {t.traits.map(([k, v]) => <div><dt class="mono">{k}</dt><dd>{v}</dd></div>)}
+      </dl>
+    </div>
+  </div>
+</section>
+
+<style>
+  .subject { padding-bottom: 100px; }
+  .subject__card { display: grid; grid-template-columns: minmax(220px, 360px) 1fr; gap: 48px; padding: 40px; background: var(--panel); }
+  .subject__photo { margin: 0; position: relative; }
+  .subject__photo img { width: 100%; aspect-ratio: 1; object-fit: cover; filter: grayscale(0.35) contrast(1.1); border: 1px solid var(--line); }
+  .subject__photo figcaption { position: absolute; left: 12px; bottom: 12px; padding: 6px 10px; background: rgba(8, 8, 8, 0.8); font-size: 10px; color: var(--red); }
+  .subject__text { display: flex; flex-direction: column; gap: 18px; align-self: center; }
+  .subject__text h2 { font-size: clamp(44px, 5vw, 64px); }
+  .subject__text > p:not(.kicker) { max-width: 640px; font-size: 16px; line-height: 1.7; color: var(--muted-2); }
+  .subject__traits { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 8px 0 0; background: var(--line-soft); border: 1px solid var(--line-soft); }
+  .subject__traits div { background: #0a0b0c; padding: 14px; }
+  .subject__traits dt { font-size: 10px; color: var(--steel); }
+  .subject__traits dd { margin: 6px 0 0; font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em; }
+  @media (max-width: 860px) {
+    .subject { padding-bottom: 64px; }
+    .subject__card { grid-template-columns: 1fr; gap: 28px; padding: 22px; }
+    .subject__photo { max-width: 280px; }
+    .subject__traits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>

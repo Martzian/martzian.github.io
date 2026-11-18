@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/home/Hero.astro';
+import FacilityMap from '../components/home/FacilityMap.astro';
+import SubjectFile from '../components/home/SubjectFile.astro';
+import LastTransmission from '../components/home/LastTransmission.astro';
+import type { Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].home;
+---
+<Base lang={lang} slug="" title={t.title} description={t.description} overlayHeader>
+  <Hero lang={lang} />
+  <FacilityMap lang={lang} />
+  <SubjectFile lang={lang} />
+  <LastTransmission lang={lang} />
+</Base>

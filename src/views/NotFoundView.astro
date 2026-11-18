@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import type { Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+import { href } from '../i18n/paths';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].notFound;
+---
+<Base lang={lang} slug="404" title={t.title} description={t.description} noindex>
+  <section class="lost">
+    <div class="lost__num" aria-hidden="true">404</div>
+    <p class="kicker">{t.k}</p>
+    <h1>{t.h}</h1>
+    <p class="muted">{t.p}</p>
+    <div class="lost__ctas">
+      <a href={href('es')} class="btn btn--solid">{t.back}</a>
+      <a href={href('en')} class="btn btn--ghost">{ui.en.notFound.back}</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .lost { position: relative; min-height: 72vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 20px; padding: 80px var(--gutter); overflow: hidden; background: radial-gradient(ellipse 50% 60% at 70% 50%, #2a0a0d, transparent 70%); }
+  .lost__num { position: absolute; right: -2vw; top: 50%; transform: translateY(-50%); font-family: var(--f-display); font-weight: 800; font-size: 40vw; line-height: 1; color: rgba(215, 215, 215, 0.03); animation: mz-flicker 5s infinite; }
+  .lost h1 { font-size: clamp(48px, 8vw, 104px); max-width: 900px; position: relative; }
+  .lost p.muted { max-width: 480px; font-size: 16px; line-height: 1.65; position: relative; }
+  .lost__ctas { display: flex; gap: 12px; flex-wrap: wrap; position: relative; }
+</style>

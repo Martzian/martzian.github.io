@@ -1,0 +1,9 @@
+{
+  "_comment": "Hall of Fame destacado. Placeholder hasta cargar ganadores reales. avatar: ruta en public/ o null. challengeId debe existir en challenges.json.",
+  "placeholder": true,
+  "entries": [
+    { "rank": 2, "name": "[NOMBRE DEL GANADOR]", "avatar": null, "challengeId": null, "badge": { "es": "SEGUNDO LUGAR", "en": "SECOND PLACE" } },
+    { "rank": 1, "name": "[NOMBRE DEL GANADOR]", "avatar": null, "challengeId": null, "badge": { "es": "CAMPEÓN · [CHALLENGE]", "en": "CHAMPION · [CHALLENGE]" } },
+    { "rank": 3, "name": "[NOMBRE DEL GANADOR]", "avatar": null, "challengeId": null, "badge": { "es": "TERCER LUGAR", "en": "THIRD PLACE" } }
+  ]
+}

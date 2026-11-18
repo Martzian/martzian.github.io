@@ -1,0 +1,110 @@
+---
+// Portafolio inmersivo: sólo el header de la instalación y, debajo, el portafolio
+// (martzian.github.io/Portfolio) ocupando el resto de la pantalla. Los dos repos siguen
+// siendo independientes: aquí sólo se monta en un iframe.
+import Base from '../layouts/Base.astro';
+import { site, type Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].portfolio;
+---
+<Base lang={lang} slug="portfolio" title={t.title} description={t.description} crumbName="Portfolio" showChamberStatus="03" immersive>
+  <section class="pf" data-viewer data-state="loading" aria-labelledby="pf-title">
+    <!-- Texto para buscadores y lectores de pantalla -->
+    <h1 id="pf-title" class="sr-only">{t.h1} — Martzian Portfolio</h1>
+    <p class="sr-only">{t.lede}</p>
+
+    <iframe
+      data-frame
+      title={t.iframeTitle}
+      src={site.portfolio}
+      allow="fullscreen; pointer-lock; autoplay; gamepad; xr-spatial-tracking; clipboard-write"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin"
+    ></iframe>
+
+    <div class="pf__loading" aria-hidden="true">
+      <span class="pf__scan"></span>
+      <span class="mono pf__k">{t.crumb}</span>
+      <span class="pf__h">{t.liveH}</span>
+      <span class="pf__bar"><span></span></span>
+      <span class="mono pf__hs">{t.handshake}</span>
+    </div>
+
+    <div class="pf__gate">
+      <span class="gate__door gate__door--l" aria-hidden="true"></span>
+      <span class="gate__door gate__door--r" aria-hidden="true"></span>
+      <span class="gate__seam" aria-hidden="true"></span>
+      <div class="gate__panel">
+        <span class="mono" style="font-size:11px;letter-spacing:.2em;color:var(--red)">{t.blocked}</span>
+        <span class="gate__h">{t.gateH}</span>
+        <span class="muted" style="font-size:14px;line-height:1.6">{t.gateP}</span>
+        <a href={site.portfolio} target="_blank" rel="noopener" class="btn btn--solid" data-cursor="EXIT">{t.enterArchive}</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style is:global>
+  /* Modo inmersivo: la página no hace scroll; header arriba y el resto es el portafolio */
+  body.immersive { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+  body.immersive > main { flex: 1; min-height: 0; display: flex; }
+</style>
+
+<style>
+  .pf { position: relative; flex: 1; min-height: 0; background: #080808; overflow: hidden; }
+  .pf iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #080808; opacity: 0; transition: opacity 0.9s; }
+  [data-state='embed'] iframe { opacity: 1; }
+
+  .pf__loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; transition: opacity 0.6s; pointer-events: none; }
+  [data-state='embed'] .pf__loading, [data-state='gate'] .pf__loading { opacity: 0; }
+  .pf__scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgba(255, 55, 55, 0.35); animation: pfscan 3.6s linear infinite; }
+  @keyframes pfscan { to { top: 100%; } }
+  .pf__k { font-size: 11px; color: var(--red); }
+  .pf__h { font-family: var(--f-display); font-weight: 800; font-size: clamp(44px, 7vw, 96px); line-height: 0.9; }
+  .pf__bar { width: min(320px, 70vw); height: 2px; background: rgba(113, 128, 140, 0.25); position: relative; overflow: hidden; }
+  .pf__bar span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--red); animation: pfload 2.4s ease-out infinite; }
+  @keyframes pfload { 0% { width: 0; } 70% { width: 86%; } 100% { width: 100%; } }
+  .pf__hs { font-size: 11px; color: var(--steel); }
+
+  .pf__gate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: radial-gradient(ellipse 50% 60% at 50% 50%, #2a0a0d, #0b0b0c 70%); }
+  [data-state='gate'] .pf__gate { display: flex; }
+  .gate__door { position: absolute; top: 0; bottom: 0; width: 50%; transition: transform 1.4s var(--ease) 0.2s; }
+  .gate__door--l { left: 0; background: linear-gradient(90deg, #0b0b0c, #121314); border-right: 1px solid rgba(113, 128, 140, 0.3); }
+  .gate__door--r { right: 0; background: linear-gradient(270deg, #0b0b0c, #121314); border-left: 1px solid rgba(113, 128, 140, 0.3); }
+  [data-state='gate'] .gate__door--l { transform: translateX(-4%); }
+  [data-state='gate'] .gate__door--r { transform: translateX(4%); }
+  .gate__seam { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, transparent, var(--red), transparent); }
+  .gate__panel { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 480px; margin: 16px; padding: 32px; background: rgba(8, 8, 8, 0.85); border: 1px solid rgba(165, 31, 36, 0.6); }
+  .gate__h { font-family: var(--f-display); font-weight: 700; font-size: 40px; line-height: 1; }
+</style>
+
+<script>
+  const viewer = document.querySelector<HTMLElement>('[data-viewer]');
+  const frame = viewer?.querySelector<HTMLIFrameElement>('[data-frame]');
+  if (viewer && frame) {
+    const set = (s: 'embed' | 'gate') => { viewer.dataset.state = s; };
+    let settled = false;
+    // Si en 12 s no cargó (sitio caído o embed bloqueado), se abre la compuerta externa
+    const timer = setTimeout(() => { if (!settled) { settled = true; set('gate'); } }, 12000);
+    const onLoad = () => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      // Mismo origen (ambos en martzian.github.io): comprobamos que realmente hay contenido
+      try {
+        const doc = frame.contentDocument;
+        if (doc && doc.readyState !== 'loading' && !doc.body?.childElementCount) { set('gate'); return; }
+      } catch { /* otro origen: el load ya indica que se mostró */ }
+      set('embed');
+      frame.focus(); // el teclado y el mouse van directo al portafolio (controles de cámara)
+    };
+    frame.addEventListener('load', onLoad);
+    // Por si el load ocurrió antes de que corriera este script
+    try { if (frame.contentDocument?.readyState === 'complete' && frame.contentDocument.location.href !== 'about:blank') onLoad(); } catch { /* otro origen */ }
+
+    // Al pasar el mouse sobre el portafolio, el foco va al iframe (para que reciba teclado al instante)
+    frame.addEventListener('pointerenter', () => frame.focus());
+  }
+</script>

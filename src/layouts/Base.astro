@@ -1,0 +1,169 @@
+---
+import '../styles/global.css';
+import { site, type Lang } from '../data/site';
+import { openModules, sealedModules } from '../data/modules';
+import { ui } from '../i18n/ui';
+import { href, asset, absolute } from '../i18n/paths';
+
+interface Props {
+  lang: Lang;
+  slug: string; // '' para home
+  title: string;
+  description: string;
+  overlayHeader?: boolean;
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown>[];
+  crumbName?: string; // nombre de la página para BreadcrumbList
+  showChamberStatus?: string; // p.ej. "02"
+  immersive?: boolean; // página a pantalla completa: sin footer (p.ej. el portafolio)
+}
+
+const { lang, slug, title, description, overlayHeader = false, noindex = false, jsonLd = [], crumbName, showChamberStatus, immersive = false } = Astro.props;
+const t = ui[lang];
+const other: Lang = lang === 'es' ? 'en' : 'es';
+const canonical = absolute(Astro.site, href(lang, slug));
+const altEs = absolute(Astro.site, href('es', slug));
+const altEn = absolute(Astro.site, href('en', slug));
+const ogImage = absolute(Astro.site, asset('img/og-martzian.jpg'));
+const siteUrl = absolute(Astro.site, href('es'));
+
+const sameAs = [site.youtube, site.portfolio, ...site.socials.map((s) => s.url)];
+const graph: Record<string, unknown>[] = [
+  {
+    '@type': 'WebSite', '@id': siteUrl + '#website', url: siteUrl, name: 'Martzian',
+    alternateName: ['MARTZIAN', 'Martzian — Enter the Unknown'], inLanguage: ['es', 'en'],
+    publisher: { '@id': siteUrl + '#martzian' },
+  },
+  {
+    '@type': 'Person', '@id': siteUrl + '#martzian', name: 'Martzian', url: siteUrl,
+    image: absolute(Astro.site, asset('img/martzian-1080.jpg')),
+    description: ui.es.home.description,
+    jobTitle: lang === 'es' ? 'Creador de contenido y artista 3D' : 'Content creator and 3D artist',
+    sameAs,
+  },
+];
+if (slug && crumbName) {
+  graph.push({
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Martzian', item: absolute(Astro.site, href(lang)) },
+      { '@type': 'ListItem', position: 2, name: crumbName, item: canonical },
+    ],
+  });
+}
+graph.push(...jsonLd);
+const ld = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+const current = (s: string) => (s === slug ? 'page' : undefined);
+---
+<!doctype html>
+<html lang={lang} class="no-js">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  {noindex ? <meta name="robots" content="noindex, nofollow" /> : <meta name="robots" content="index, follow, max-image-preview:large" />}
+  {!noindex && <link rel="alternate" hreflang="es" href={altEs} />}
+  {!noindex && <link rel="alternate" hreflang="en" href={altEn} />}
+  {!noindex && <link rel="alternate" hreflang="x-default" href={altEs} />}
+  <meta name="author" content="Martzian" />
+  <meta name="theme-color" content="#080808" />
+  <meta name="color-scheme" content="dark" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Martzian" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content={t.home.alt} />
+  <meta property="og:locale" content={t.locale} />
+  <meta property="og:locale:alternate" content={ui[other].locale} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
+
+  <link rel="icon" href={asset('favicon.svg')} type="image/svg+xml" />
+  <link rel="apple-touch-icon" href={asset('apple-touch-icon.png')} />
+  <link rel="manifest" href={asset('site.webmanifest')} />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;500;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" />
+  <script is:inline>document.documentElement.classList.replace('no-js', 'js');</script>
+  <script type="application/ld+json" set:html={ld} />
+  <slot name="head" />
+</head>
+<body data-lang={lang} class:list={{ immersive }}>
+  <a class="skip-link" href="#main">{t.skip}</a>
+
+  <header class:list={['site-header', { 'site-header--overlay': overlayHeader }]}>
+    <a href={href(lang)} class="brand" aria-label={t.homeAria} data-cursor="HOME">
+      <span class="brand__word">MARTZIAN</span>
+    </a>
+    <nav class="main-nav" aria-label={t.navAria}>
+      {openModules.map((m) => (
+        <a href={href(lang, m.slug)} aria-current={current(m.slug)} data-cursor={m.n}><span>{m.n}</span>{m.name[lang]}</a>
+      ))}
+    </nav>
+    <div class="header-tools">
+      <div class="sys-status">
+        <span class="dot dot--pulse" aria-hidden="true"></span>
+        {showChamberStatus ? <>{t.chamber} {showChamberStatus} · <b>{t.online}</b></> : <>{t.status} <b>{t.online}</b></>}
+      </div>
+      <div class="pill-group" role="group" aria-label={t.langAria}>
+        <a class="pill" href={href('es', slug)} hreflang="es" lang="es" aria-current={lang === 'es' ? 'true' : undefined}>ES</a>
+        <a class="pill" href={href('en', slug)} hreflang="en" lang="en" aria-current={lang === 'en' ? 'true' : undefined}>EN</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <slot />
+  </main>
+
+  {!immersive && <footer class="site-footer">
+    <span class="brand__word" style="font-size:20px;color:var(--white)">MARTZIAN</span>
+    <nav aria-label={t.footerNav}>
+      {openModules.map((m) => <a href={href(lang, m.slug)}>{m.name[lang]}</a>)}
+      <a href={site.youtube} rel="me noopener" target="_blank">YOUTUBE ↗</a>
+    </nav>
+    <button type="button" class="hex-egg" data-hex-egg data-plain={t.footerEgg} aria-label="4D 41 52 54 5A 49 41 4E">4D 41 52 54 5A 49 41 4E</button>
+    <span>© {new Date().getFullYear()} MARTZIAN · {t.footerCopy}</span>
+  </footer>}
+
+  <!-- Dock móvil -->
+  <nav class="dock" aria-label={t.navAria}>
+    {openModules.map((m) => (
+      <a href={href(lang, m.slug)} aria-current={current(m.slug)}><span>{m.n}</span>{m.short[lang]}</a>
+    ))}
+    <button type="button" class="dock__map" aria-expanded="false" aria-controls="map-sheet" aria-label={t.mapAria} data-map-toggle>
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="5" height="5"></rect><rect x="12" y="3" width="5" height="5"></rect><rect x="3" y="12" width="5" height="5"></rect><rect x="12" y="12" width="5" height="5" stroke="#FF3737"></rect></svg>
+    </button>
+  </nav>
+  <div class="map-sheet" id="map-sheet" data-open="false" aria-label={t.mapAria}>
+    <div class="kicker" style="font-size:10px">{t.mapTitle}</div>
+    <ul class="map-sheet__list">
+      {openModules.map((m) => (
+        <li><a href={href(lang, m.slug)} aria-current={current(m.slug)}>{m.name[lang]}<span>{m.n}</span></a></li>
+      ))}
+    </ul>
+    <div class="mono" style="font-size:10px;color:var(--muted)">{t.sealedSectors}</div>
+    <ul class="map-sheet__sealed">
+      {sealedModules.map((m) => <li>{m.n} {m.name[lang]}</li>)}
+    </ul>
+  </div>
+
+  <div class="cursor" aria-hidden="true"><span class="cursor__ring"></span><span class="cursor__dot"></span><span class="cursor__label"></span></div>
+  <div class="egg-overlay" aria-live="polite"><p></p></div>
+  <span hidden data-egg-msg={t.eggMsg}></span>
+
+  <script>
+    import '../scripts/global';
+  </script>
+</body>
+</html>

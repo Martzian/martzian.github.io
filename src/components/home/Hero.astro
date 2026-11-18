@@ -1,0 +1,370 @@
+---
+import { site, type Lang } from '../../data/site';
+import { openModules, sealedModules } from '../../data/modules';
+import { ui } from '../../i18n/ui';
+import { asset } from '../../i18n/paths';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].home;
+const g = ui[lang];
+const bars = Array.from({ length: 26 }, (_, i) => ({
+  h: Math.round(18 + Math.abs(Math.sin(i * 0.9)) * 50 + (i === 17 ? 30 : 0)),
+  hot: i === 17,
+}));
+const model = site.characterModel ? asset(site.characterModel) : '';
+---
+<section class="hero" data-hero aria-labelledby="hero-title">
+  <div class="hero__glow" aria-hidden="true"></div>
+
+  <div class="hero__ghost" aria-hidden="true">MARTZIAN</div>
+
+  <!-- Render panorámico con transparencia. La capa de luz usa la silueta del render
+       como máscara: sólo ilumina al personaje y a los tubos, nunca el fondo. -->
+  <div class="hero__figure" data-figure>
+    <div class="hero__sway">
+      <div class="hero__react" data-react>
+      <div class="hero__breath">
+        <picture>
+          <source type="image/webp" srcset={`${asset('img/martzian-hero-960.webp')} 960w, ${asset('img/martzian-hero-1440.webp')} 1440w, ${asset('img/martzian-hero-1920.webp')} 1920w`} sizes="(max-width: 960px) 240vw, 112vw" />
+          <img src={asset('img/martzian-hero-1440.png')} width="1920" height="1080" alt={t.alt} fetchpriority="high" decoding="async" data-poke />
+        </picture>
+        <span class="hero__light" data-light aria-hidden="true"></span>
+      </div>
+      </div>
+    </div>
+  </div>
+  <canvas class="hero__canvas" data-hero-canvas data-model={model} aria-hidden="true"></canvas>
+
+  <div class="hero__scan" aria-hidden="true"></div>
+  <div class="hero__lines" aria-hidden="true"></div>
+  <div class="hero__vignette" aria-hidden="true"></div>
+
+  <div class="hero__rail" aria-hidden="true"></div>
+  <div class="hero__gauge" aria-hidden="true">{t.gauge}</div>
+
+  <div class="hero__copy">
+    <p class="hero__kicker boot" style="--i:0"><span></span>{t.kicker}</p>
+    <h1 id="hero-title" class="hero__title boot" style="--i:1">MARTZIAN</h1>
+    <p class="hero__tag boot" style="--i:2">THE SYSTEM IS <span>STILL ALIVE.</span></p>
+    <p class="hero__desc boot" style="--i:3">{t.desc}</p>
+    <div class="hero__ctas boot" style="--i:4">
+      <a href="#facility" class="btn btn--solid" data-cursor="DESCEND">{t.explore}
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3 V15 M3 9 L9 15 L15 9"></path></svg></a>
+      <a href={site.youtube} class="btn btn--ghost" target="_blank" rel="me noopener" data-cursor="YOUTUBE">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="#FF3737" stroke-width="1.6"><path d="M6 4 L14 9 L6 14 Z"></path></svg>{t.watch}</a>
+    </div>
+  </div>
+
+  <div class="hero__hud" aria-hidden="true">
+    {t.hud.map(([k, v], i) => (
+      <div class:list={['hud-row', { 'hud-row--first': i === 0 }]}><span>{k}</span><span class:list={{ hot: i === t.hud.length - 1 }}>{v}</span></div>
+    ))}
+    <div class="hud-bars">{bars.map((b) => <span style={`height:${b.h}%`} class:list={{ hot: b.hot }}></span>)}</div>
+    <div class="hud-trace">{t.trace}</div>
+  </div>
+
+  <div class="hero__strip">
+    <span>{t.node}</span>
+    <span class="hide-sm">{t.chOnline} <b>{String(openModules.length).padStart(2, '0')}</b> / {t.chSealed} <b>{String(sealedModules.length).padStart(2, '0')}</b></span>
+    <a href="#facility">{t.scroll} <span class="hero__strip-line"></span></a>
+  </div>
+</section>
+
+<style>
+  .hero {
+    --mx: 62%; --my: 46%; --px: 0; --py: 0;
+    position: relative; height: max(680px, min(100svh, 960px)); overflow: hidden; isolation: isolate;
+    background: radial-gradient(ellipse 55% 60% at 60% 45%, #3a0d10 0%, #16090B 45%, #080808 80%);
+  }
+  .hero__glow {
+    position: absolute; left: var(--mx); top: var(--my); width: 720px; height: 720px; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 55, 55, 0.24) 0%, rgba(165, 31, 36, 0.09) 35%, transparent 65%);
+    pointer-events: none; mix-blend-mode: screen;
+  }
+  .hero__ghost {
+    position: absolute; left: 50%; top: 52%; white-space: nowrap; line-height: 1;
+    transform: translate(calc(-50% + var(--px) * 18px), calc(-50% + var(--py) * 10px));
+    font-family: var(--f-display); font-weight: 800; font-size: clamp(160px, 25vw, 360px); letter-spacing: 0.04em; color: rgba(215, 215, 215, 0.035);
+  }
+
+  /* Personaje: capa panorámica, centrada en el sujeto, con parallax e inclinación 3D */
+  .hero__figure {
+    position: absolute; top: 0; left: 61%; height: 100%; aspect-ratio: 16 / 9; translate: -50% 0;
+    transform: perspective(1600px) translate3d(calc(var(--px) * -24px), calc(var(--py) * -14px), 0)
+      rotateY(calc(var(--px) * 2.4deg)) rotateX(calc(var(--py) * -1.6deg));
+    transition: opacity 1s; cursor: pointer;
+  }
+  .hero__sway {
+    width: 100%; height: 100%; animation: sway 9s ease-in-out infinite; transform-origin: 50% 0;
+    /* Fundido: el lado del texto y el borde inferior se disuelven en la oscuridad */
+    -webkit-mask-image: linear-gradient(90deg, transparent 10%, #000 44%, #000 94%, transparent 100%), linear-gradient(0deg, transparent 0%, #000 20%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 10%, #000 44%, #000 94%, transparent 100%), linear-gradient(0deg, transparent 0%, #000 20%);
+    mask-composite: intersect;
+  }
+  /* Reacción al cursor: cuelga de los tubos, así que pivota desde arriba */
+  .hero__react { width: 100%; height: 100%; transform-origin: 52% 8%; will-change: transform; }
+  .hero__breath { position: relative; width: 100%; height: 100%; isolation: isolate; animation: breath 6s ease-in-out infinite; transform-origin: 50% 30%; }
+  .hero__breath img { width: 100%; height: 100%; object-fit: contain; animation: wake 2.6s var(--ease) both; filter: contrast(1.05) saturate(0.95); }
+  .hero__breath img.is-poked { animation: twitch 0.5s steps(3) 1; }
+
+  /* Linterna: ilumina sólo la silueta del render (máscara = alfa de la imagen, la asigna el script) */
+  .hero__light {
+    --lx: 52%; --ly: 32%; --li: 0;
+    position: absolute; inset: 0; pointer-events: none; opacity: var(--li);
+    background:
+      radial-gradient(circle at var(--lx) var(--ly), rgba(255, 244, 236, 0.75) 0%, rgba(255, 120, 110, 0.4) 7%, rgba(255, 55, 55, 0.14) 16%, transparent 28%);
+    mix-blend-mode: overlay;
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  }
+  .hero__light:not([style*='mask']) { display: none; }
+
+  .hero--model .hero__figure { opacity: 0; }
+  .hero--alarm .hero__glow { background: radial-gradient(circle, rgba(255, 55, 55, 0.5) 0%, transparent 65%); animation: mz-pulse 0.3s steps(2) 6; }
+  .hero--alarm .hero__light { --li: 1 !important; filter: hue-rotate(-10deg) saturate(3); animation: mz-pulse 0.3s steps(2) 6; }
+  .hero__canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  @keyframes breath { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.01); } }
+  @keyframes sway { 0%, 100% { transform: rotate(-0.35deg); } 50% { transform: rotate(0.35deg); } }
+  @keyframes wake { 0% { opacity: 0; filter: brightness(0) contrast(1.06); } 40% { opacity: 1; filter: brightness(0.3) contrast(1.06); } 46% { filter: brightness(1.4) contrast(1.06); } 52% { filter: brightness(0.4) contrast(1.06); } 100% { filter: contrast(1.06) saturate(0.92); } }
+  @keyframes twitch { 0% { transform: translate(0) rotate(0); } 33% { transform: translate(-6px, 3px) rotate(-1.4deg); } 66% { transform: translate(5px, -2px) rotate(1deg); } }
+
+  .hero__scan { position: absolute; left: 0; right: 0; top: 0; height: 120px; background: linear-gradient(180deg, rgba(255, 55, 55, 0.05), transparent); animation: mz-scan 9s linear infinite; pointer-events: none; }
+  .hero__lines { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px); pointer-events: none; }
+  .hero__vignette { position: absolute; inset: 0; box-shadow: inset 0 0 220px 60px #080808; pointer-events: none; }
+  .hero__rail { position: absolute; left: var(--gutter); top: 200px; bottom: 140px; width: 1px; background: linear-gradient(180deg, transparent, rgba(113, 128, 140, 0.5), transparent); }
+  .hero__gauge {
+    position: absolute; left: calc(var(--gutter) - 22px); top: 50%; transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl;
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.4em; color: var(--steel); white-space: nowrap;
+  }
+
+  .hero__copy { position: absolute; left: calc(var(--gutter) + 48px); top: 50%; transform: translate(calc(var(--px) * 6px), calc(-46% + var(--py) * 4px)); max-width: 540px; z-index: 4; }
+  .hero__kicker { display: flex; align-items: center; gap: 12px; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.24em; color: var(--red); }
+  .hero__kicker span { width: 28px; height: 1px; background: var(--red); }
+  .hero__kicker { animation: boot 1s var(--ease) both, mz-flicker 7s 2s infinite; }
+  .hero__title { margin-top: 22px; font-size: clamp(84px, 10.3vw, 148px); line-height: 0.84; color: var(--white); }
+  .hero__tag { margin-top: 22px; font-family: var(--f-display); font-weight: 300; font-size: clamp(22px, 2.4vw, 34px); letter-spacing: 0.18em; }
+  .hero__tag span { color: var(--red); font-weight: 500; }
+  .hero__desc { margin-top: 26px; max-width: 440px; font-size: 16px; line-height: 1.65; color: var(--muted); }
+  .hero__ctas { display: flex; gap: 14px; margin-top: 40px; flex-wrap: wrap; }
+  .hero__ctas .btn { min-height: 56px; font-size: 13px; }
+  .boot { animation: boot 1s var(--ease) both; animation-delay: calc(1.1s + var(--i) * 0.14s); }
+  @keyframes boot { from { opacity: 0; transform: translateY(16px); filter: blur(6px); } }
+
+  .hero__hud { position: absolute; right: 64px; top: 210px; width: 260px; z-index: 4; display: flex; flex-direction: column; gap: 12px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--steel); animation: boot 1.2s 1.8s var(--ease) both; }
+  .hud-row { display: flex; justify-content: space-between; gap: 12px; }
+  .hud-row span:last-child { color: var(--white); text-align: right; }
+  .hud-row span.hot { color: var(--red); }
+  .hud-row--first { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .hud-bars { margin-top: 6px; height: 34px; display: flex; align-items: flex-end; gap: 3px; }
+  .hud-bars span { flex: 1; background: rgba(113, 128, 140, 0.55); transform-origin: bottom; animation: bar 2.4s ease-in-out infinite alternate; }
+  .hud-bars span:nth-child(3n) { animation-delay: -0.8s; } .hud-bars span:nth-child(4n+1) { animation-delay: -1.6s; }
+  .hud-bars span.hot { background: var(--red); }
+  @keyframes bar { to { transform: scaleY(0.55); } }
+  .hud-trace { font-size: 10px; }
+
+  .hero__strip {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    padding: 22px var(--gutter); border-top: 1px solid var(--line-soft); background: linear-gradient(0deg, #080808, rgba(8, 8, 8, 0.6));
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; color: var(--steel);
+  }
+  .hero__strip b { font-weight: 400; color: var(--white); }
+  .hero__strip a { display: flex; align-items: center; gap: 10px; }
+  .hero__strip-line { display: inline-block; width: 1px; height: 22px; background: var(--red); animation: drip 2s ease-in-out infinite; transform-origin: top; }
+  @keyframes drip { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
+
+  @media (max-width: 1180px) {
+    .hero__hud { display: none; }
+    .hero__figure { left: 66%; }
+  }
+  /* Móvil: composición vertical propia, no la de escritorio comprimida */
+  @media (max-width: 960px) {
+    .hero { height: auto; min-height: 100svh; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 0 72px;
+      background: radial-gradient(ellipse 90% 50% at 50% 34%, #3a0d10 0%, #16090B 45%, #080808 85%); }
+    .hero__figure { left: 50%; top: 64px; height: auto; width: min(240vw, 1200px); translate: -51% 0; }
+    .hero__sway {
+      -webkit-mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%);
+      mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%);
+    }
+    .hero__rail, .hero__gauge, .hide-sm { display: none; }
+    .hero__ghost { top: 34%; }
+    .hero__copy { position: relative; left: auto; top: auto; transform: none; padding: 52vh var(--gutter) 0; max-width: 560px; }
+    .hero__title { margin-top: 12px; font-size: clamp(64px, 20vw, 96px); }
+    .hero__tag { margin-top: 12px; font-size: 19px; letter-spacing: 0.14em; }
+    .hero__desc { margin-top: 16px; font-size: 15px; }
+    .hero__ctas { flex-direction: column; margin-top: 24px; gap: 10px; }
+    .hero__ctas .btn { width: 100%; }
+    .hero__strip { position: absolute; padding-block: 16px; font-size: 10px; }
+    .hero__strip > span:first-child { display: none; }
+    .hero__strip { justify-content: center; }
+    .hero__vignette { box-shadow: inset 0 0 120px 30px #080808; }
+  }
+  @media (max-width: 960px) and (max-height: 700px) { .hero__copy { padding-top: 44vh; } }
+</style>
+
+<script>
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) {
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fine = matchMedia('(pointer: fine)').matches;
+
+    const figure = hero.querySelector<HTMLElement>('[data-figure]');
+    const light = hero.querySelector<HTMLElement>('[data-light]');
+    const heroImg = hero.querySelector<HTMLImageElement>('[data-poke]');
+
+    // La linterna usa la silueta del render como máscara (la misma imagen ya descargada)
+    const applyMask = () => {
+      if (!light || !heroImg?.currentSrc) return;
+      const url = `url("${heroImg.currentSrc}")`;
+      light.style.setProperty('-webkit-mask-image', url);
+      light.style.setProperty('mask-image', url);
+    };
+    if (heroImg?.complete) applyMask(); else heroImg?.addEventListener('load', applyMask, { once: true });
+
+    // Parallax + luz: el puntero fija un objetivo y un bucle lo persigue con suavizado.
+    // Con "reducir movimiento" la luz sigue al cursor (no desplaza nada), pero se apagan
+    // el parallax y la deriva automática.
+    if (figure && light) {
+      const s = { x: 0.62, y: 0.42, tx: 0.62, ty: 0.42, i: 0, ti: 0, inside: false };
+      let raf = 0, visible = true;
+      const t0 = performance.now();
+
+      /* ---- Reacción física del personaje al cursor (péndulo amortiguado) ---- */
+      const react = hero.querySelector<HTMLElement>('[data-react]');
+      const body = { x: 0, y: 0, r: 0, vx: 0, vy: 0, vr: 0, tx: 0, ty: 0, tr: 0, over: false };
+      const subjectLabel = document.body.dataset.lang === 'en' ? 'SUBJECT 001' : 'SUJETO 001';
+      // Mapa de alfa del render en baja resolución para saber si el cursor está SOBRE el personaje
+      let alpha: Uint8ClampedArray | null = null;
+      const AW = 240, AH = 135;
+      const buildAlpha = () => {
+        if (!heroImg?.naturalWidth) return;
+        try {
+          const c = document.createElement('canvas'); c.width = AW; c.height = AH;
+          const cx = c.getContext('2d', { willReadFrequently: true })!;
+          cx.drawImage(heroImg, 0, 0, AW, AH);
+          alpha = cx.getImageData(0, 0, AW, AH).data;
+        } catch { alpha = null; }
+      };
+      if (heroImg?.complete) buildAlpha(); else heroImg?.addEventListener('load', buildAlpha, { once: true });
+      const overSubject = (cx: number, cy: number) => {
+        if (!react) return false;
+        const fr = react.getBoundingClientRect();
+        const u = (cx - fr.left) / fr.width, v = (cy - fr.top) / fr.height;
+        // Zona del cuerpo (excluye los tubos que van a los bordes)
+        if (u < 0.39 || u > 0.69 || v < 0.1 || v > 0.98) return false;
+        if (!alpha) return true;
+        const i = (Math.floor(v * AH) * AW + Math.floor(u * AW)) * 4 + 3;
+        return alpha[i] > 115;
+      };
+      const stepBody = () => {
+        if (!react) return false;
+        // Muelle lento y amortiguado: se desliza unos píxeles y se detiene, sin rebote
+        const damp = 0.8;
+        body.vx = (body.vx + (body.tx - body.x) * 0.018) * damp;
+        body.vy = (body.vy + (body.ty - body.y) * 0.018) * damp;
+        body.vr = (body.vr + (body.tr - body.r) * 0.018) * damp;
+        body.x += body.vx; body.y += body.vy; body.r += body.vr;
+        const clamp = (n: number, m: number) => Math.max(-m, Math.min(m, n));
+        body.x = clamp(body.x, 5); body.y = clamp(body.y, 2.5); body.r = clamp(body.r, 0.5);
+        react.style.transform = `translate3d(${body.x.toFixed(2)}px, ${body.y.toFixed(2)}px, 0) rotate(${body.r.toFixed(3)}deg)`;
+        return Math.abs(body.vx) + Math.abs(body.vy) + Math.abs(body.vr) + Math.abs(body.tx - body.x) + Math.abs(body.tr - body.r) > 0.01;
+      };
+
+      const frame = (now: number) => {
+        raf = 0;
+        if (!visible) return;
+        if (!fine || !s.inside) {
+          if (reduced) { s.ti = 0; }
+          else {
+            // Sin cursor (táctil) o cursor fuera: la luz deambula sola, despacio
+            const t = (now - t0) / 1000;
+            s.tx = 0.6 + Math.sin(t * 0.37) * 0.07;
+            s.ty = 0.38 + Math.sin(t * 0.23 + 1.3) * 0.12;
+            s.ti = fine ? 0.35 : 0.6;
+          }
+        }
+        const k = reduced ? 0.3 : 0.07;
+        s.x += (s.tx - s.x) * k;
+        s.y += (s.ty - s.y) * k;
+        s.i += (s.ti - s.i) * (reduced ? 0.2 : 0.05);
+
+        hero.style.setProperty('--mx', `${(s.x * 100).toFixed(2)}%`);
+        hero.style.setProperty('--my', `${(s.y * 100).toFixed(2)}%`);
+        if (!reduced) {
+          hero.style.setProperty('--px', ((s.x - 0.5) * 2).toFixed(4));
+          hero.style.setProperty('--py', ((s.y - 0.5) * 2).toFixed(4));
+        }
+
+        // Posición de la luz en coordenadas de la imagen
+        const hr = hero.getBoundingClientRect();
+        const fr = figure.getBoundingClientRect();
+        light.style.setProperty('--lx', `${(((hr.left + s.x * hr.width) - fr.left) / fr.width * 100).toFixed(2)}%`);
+        light.style.setProperty('--ly', `${(((hr.top + s.y * hr.height) - fr.top) / fr.height * 100).toFixed(2)}%`);
+        light.style.setProperty('--li', s.i.toFixed(3));
+        const moving = stepBody();
+
+        // Con movimiento reducido el bucle se detiene en cuanto todo se asienta
+        const settled = Math.abs(s.tx - s.x) + Math.abs(s.ty - s.y) + Math.abs(s.ti - s.i) < 0.002;
+        if (reduced && settled && !moving) return;
+        raf = requestAnimationFrame(frame);
+      };
+      const kick = () => { if (!raf && visible) raf = requestAnimationFrame(frame); };
+
+      hero.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+        const r = hero.getBoundingClientRect();
+        s.tx = (e.clientX - r.left) / r.width;
+        s.ty = (e.clientY - r.top) / r.height;
+        s.ti = 1; s.inside = true;
+
+        // Reacción sutil al pasar el cursor sobre el cuerpo (la provoca el usuario,
+        // así que se mantiene también con "reducir movimiento")
+        if (react) {
+          const over = overSubject(e.clientX, e.clientY);
+          if (over) {
+            const fr = react.getBoundingClientRect();
+            // Se aparta del cursor: si lo tocas por la izquierda, cede hacia la derecha
+            const cxRel = (e.clientX - (fr.left + fr.width * 0.54)) / (fr.width * 0.13); // -1..1 sobre el cuerpo
+            const cyRel = (e.clientY - (fr.top + fr.height * 0.5)) / (fr.height * 0.4);
+            body.tx = -Math.max(-1, Math.min(1, cxRel)) * 4;
+            body.ty = -Math.max(-1, Math.min(1, cyRel)) * 1.5;
+            body.tr = 0; // sin inclinación: sólo se desliza
+            if (!body.over && heroImg) heroImg.dataset.cursor = subjectLabel;
+          } else if (body.over) {
+            body.tx = body.ty = body.tr = 0;
+            heroImg?.removeAttribute('data-cursor');
+          }
+          body.over = over;
+        }
+        kick();
+      });
+      hero.addEventListener('pointerleave', () => {
+        s.inside = false;
+        body.over = false; body.tx = body.ty = body.tr = 0;
+        heroImg?.removeAttribute('data-cursor');
+      });
+      new IntersectionObserver(([e]) => { visible = e.isIntersecting; kick(); }).observe(hero);
+      document.addEventListener('visibilitychange', () => { visible = !document.hidden; kick(); });
+      kick();
+    }
+
+    // Secreto: tocar al sujeto varias veces
+    const img = heroImg;
+    let pokes = 0;
+    img?.closest('.hero__figure')?.addEventListener('click', () => {
+      if (!img) return;
+      img.classList.remove('is-poked'); void img.offsetWidth; img.classList.add('is-poked');
+      if (++pokes === 5) { pokes = 0; hero.classList.add('hero--alarm'); document.dispatchEvent(new CustomEvent('martzian:egg')); setTimeout(() => hero.classList.remove('hero--alarm'), 1800); }
+    });
+
+    // Escena WebGL diferida: sólo si hay WebGL, no hay reduced-motion ni ahorro de datos
+    const canvas = hero.querySelector<HTMLCanvasElement>('[data-hero-canvas]');
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const hasGL = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
+    if (canvas && hasGL && !reduced && !conn?.saveData) {
+      const go = () => import('../../scripts/hero3d').then((m) => m.startHero3D(canvas, hero)).catch((err) => console.warn('[hero3d]', err));
+      if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 2500 }); else setTimeout(go, 1200);
+    }
+  }
+</script>

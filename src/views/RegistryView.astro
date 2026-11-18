@@ -1,0 +1,294 @@
+---
+import Base from '../layouts/Base.astro';
+import ChamberHead from '../components/ChamberHead.astro';
+import type { Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+import { specialties, availability, experience, sampleArtists } from '../data/registry';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].registry;
+const specLabel = (id: string) => specialties.find((s) => s.id === id)?.label[lang] ?? id;
+---
+<Base lang={lang} slug="registry" title={t.title} description={t.description} crumbName="Artist Registry" showChamberStatus="04">
+  <ChamberHead lang={lang} crumb={t.crumb} glow="radial-gradient(ellipse 40% 100% at 10% 0%, #22080b, transparent 70%)">
+    <h1 slot="title">ARTIST<br />REGISTRY</h1>
+    <p slot="lede" class="chamber-head__lede">{t.lede}</p>
+    <div class="tabs" role="tablist" aria-label={t.viewAria}>
+      <button type="button" class="chip tab" role="tab" id="tab-reg" aria-selected="true" aria-controls="panel-reg" data-tab="reg">{t.tabReg}</button>
+      <button type="button" class="chip tab" role="tab" id="tab-dir" aria-selected="false" aria-controls="panel-dir" data-tab="dir" tabindex="-1">{t.tabDir}</button>
+    </div>
+  </ChamberHead>
+
+  <!-- ============ FORMULARIO ============ -->
+  <section class="wrap reg" id="panel-reg" role="tabpanel" aria-labelledby="tab-reg">
+    <form class="reg__form" aria-label={t.formAria} data-reg-form novalidate
+      data-err-required={t.errRequired} data-err-invalid={t.errInvalid} data-err-specs={t.errSpecs} data-ok={t.checkOk}>
+      <fieldset>
+        <legend>{t.secA}</legend>
+        <div class="grid2">
+          <div class="field"><label class="lab" for="f-name">{t.name}</label><input id="f-name" name="name" class="in" type="text" autocomplete="name" placeholder={t.namePh} required /><span class="err" aria-live="polite"></span></div>
+          <div class="field"><label class="lab" for="f-mail">{t.mail}</label><input id="f-mail" name="email" class="in" type="email" autocomplete="email" placeholder={t.mailPh} required /><span class="err" aria-live="polite"></span></div>
+          <div class="field"><label class="lab" for="f-loc">{t.loc}</label><input id="f-loc" name="location" class="in" type="text" autocomplete="country-name" placeholder={t.locPh} /></div>
+          <div class="field"><label class="lab" for="f-exp">{t.exp}</label>
+            <select id="f-exp" name="experience" class="in"><option value="">{t.expPh}</option>{experience.map((e, i) => <option value={String(i)}>{e[lang]}</option>)}</select></div>
+        </div>
+      </fieldset>
+
+      <fieldset data-specs>
+        <legend>{t.secB}</legend>
+        <div class="chips">
+          {specialties.map((s) => (
+            <label class="chip spec"><input type="checkbox" name="specialties" value={s.id} class="sr-only" /><span class="chip__mark" aria-hidden="true"></span>{s.label[lang]}</label>
+          ))}
+        </div>
+        <p class="mono reg__count"><span data-spec-count>00</span> {t.selected}</p>
+        <span class="err" aria-live="polite"></span>
+      </fieldset>
+
+      <fieldset class="stack">
+        <legend>{t.secC}</legend>
+        <div class="field"><label class="lab" for="f-bio">{t.bio}</label><textarea id="f-bio" name="bio" class="in" rows="4" placeholder={t.bioPh}></textarea></div>
+        <div class="grid2">
+          <div class="field"><label class="lab" for="f-port">{t.port}</label><input id="f-port" name="portfolio" class="in" type="url" inputmode="url" placeholder={t.portPh} required /><span class="err" aria-live="polite"></span></div>
+          <div class="field"><label class="lab" for="f-soc">{t.soc}</label><input id="f-soc" name="socials" class="in" type="text" placeholder={t.socPh} /></div>
+        </div>
+        <fieldset class="bare">
+          <legend class="lab">{t.avail}</legend>
+          <div class="chips">
+            {availability.map((a, i) => (
+              <label class="chip"><input type="radio" name="availability" value={a.id} class="sr-only" checked={i === 1} />{a.label[lang]}</label>
+            ))}
+          </div>
+        </fieldset>
+        <div class="field"><label class="lab" for="f-more">{t.more}</label><textarea id="f-more" name="additional" class="in" rows="3" placeholder={t.morePh}></textarea></div>
+      </fieldset>
+
+      <div class="reg__submit">
+        <button type="submit" class="btn btn--solid" data-submit>{t.submit}</button>
+        <p id="intake-offline" class="mono reg__offline"><span class="dot"></span>{t.offline}</p>
+      </div>
+      <p class="reg__result mono" data-result aria-live="polite" hidden></p>
+    </form>
+
+    <aside class="reg__side">
+      <div class="proto">
+        <p class="kicker" style="font-size:11px">{t.protoK}</p>
+        <ol>{t.steps.map((s, i) => <li><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}</ol>
+      </div>
+      <div class="sys">
+        <p class="mono" style="font-size:11px;color:var(--white);margin-bottom:10px">{t.sysK}</p>
+        <p>{t.sysP}</p>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ============ DIRECTORIO ============ -->
+  <section class="wrap dir" id="panel-dir" role="tabpanel" aria-labelledby="tab-dir" hidden data-dir>
+    <div class="dir__top">
+      <div class="field dir__search"><label for="dir-q" class="lab">{t.search}</label><input id="dir-q" class="in" type="search" placeholder={t.searchPh} data-dir-q /></div>
+      <p class="mono dir__samples">{t.samples}</p>
+    </div>
+    <div class="chips dir__filters" role="group" aria-label={t.filterAria}>
+      <button type="button" class="chip" data-dir-f="ALL" aria-pressed="true">{t.all}</button>
+      {specialties.map((s) => <button type="button" class="chip" data-dir-f={s.id} aria-pressed="false">{s.label[lang]}</button>)}
+    </div>
+    <ul class="dir__grid">
+      {sampleArtists.map((p) => {
+        const av = availability.find((a) => a.id === p.av)!;
+        return (
+          <li class="prof" data-tags={p.tags.join(' ')} data-search={(p.name + ' ' + p.tags.map(specLabel).join(' ')).toLowerCase()}>
+            <div class="prof__head">
+              <span class="prof__avatar" aria-hidden="true"></span>
+              <div><p class="prof__name">{p.name}</p><p class="mono prof__meta">{t.meta}</p></div>
+            </div>
+            <div class="prof__tags">{p.tags.map((id) => <span class="mono">{specLabel(id)}</span>)}</div>
+            <p class="prof__bio">{t.bioCard}</p>
+            <div class="prof__foot">
+              <span class="mono prof__av" data-av={p.av}><span></span>{av.tag[lang]}</span>
+              <span class="btn btn--ghost btn--sm" aria-disabled="true">{t.portLink}</span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+    <p class="dir__empty mono" data-dir-empty hidden>{t.noRes}</p>
+  </section>
+</Base>
+
+<style>
+  .tabs { display: flex; gap: 8px; margin-top: 44px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .tab { min-height: 48px; padding: 0 24px; font-size: 12px; letter-spacing: 0.18em; color: var(--muted); }
+  .tab[aria-selected='true'] { color: var(--white); }
+
+  .reg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 40px; align-items: start; padding-top: 20px; padding-bottom: 100px; }
+  .reg__form { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+  fieldset { margin: 0; padding: 28px; border: 1px solid var(--line); min-width: 0; }
+  fieldset.bare { padding: 0; border: 0; }
+  legend { padding: 0 10px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--red); }
+  fieldset.bare legend { padding: 0; margin-bottom: 8px; }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .lab { display: block; margin-bottom: 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
+  .in {
+    width: 100%; min-height: 48px; padding: 12px 14px; background: var(--panel); border: 1px solid rgba(113, 128, 140, 0.35); border-radius: 0;
+    color: var(--white); font-family: var(--f-body); font-size: 16px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .in:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 55, 55, 0.15); }
+  .in::placeholder { color: #7d8992; }
+  .in[aria-invalid='true'] { border-color: var(--red); }
+  select.in { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--steel) 50%), linear-gradient(135deg, var(--steel) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 40px; }
+  select.in option { background: var(--panel); }
+  .err { display: block; min-height: 0; margin-top: 6px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--red); }
+  .err:empty { display: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  label.chip:has(input:checked) { background: var(--black-red); border-color: var(--red); }
+  label.chip:has(input:checked) .chip__mark { background: var(--red); color: var(--red); }
+  label.chip:has(input:focus-visible) { outline: 2px solid var(--red); outline-offset: 3px; }
+  .reg__count { margin-top: 16px; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+  .reg__submit { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .reg__submit .btn { min-height: 56px; padding: 0 30px; font-size: 13px; }
+  .reg__offline { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 0.12em; color: var(--red); }
+  .reg__offline .dot { box-shadow: none; }
+  .reg__result { padding: 16px; border: 1px dashed var(--red); font-size: 12px; letter-spacing: 0.08em; line-height: 1.6; color: var(--white); }
+  .reg__side { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 24px; }
+  .proto { padding: 28px; border: 1px solid var(--blood); background: var(--black-red); }
+  .proto ol { margin: 18px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 18px; }
+  .proto li { display: flex; gap: 14px; font-size: 14px; line-height: 1.5; color: var(--muted-2); }
+  .proto li span { font-family: var(--f-display); font-weight: 800; font-size: 28px; line-height: 1; color: var(--red); }
+  .sys { padding: 24px; border: 1px dashed var(--line-strong); font-size: 13px; line-height: 1.6; color: var(--muted); }
+
+  .dir { padding-top: 20px; padding-bottom: 100px; }
+  .dir__top { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+  .dir__search { flex: 1 1 360px; }
+  .dir__samples { padding-bottom: 14px; font-size: 11px; letter-spacing: 0.14em; color: var(--red); }
+  .dir__filters { margin-bottom: 32px; }
+  .dir__filters .chip { padding: 0 14px; font-size: 11px; letter-spacing: 0.1em; }
+  .dir__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0; padding: 0; list-style: none; }
+  .prof { padding: 24px; border: 1px solid rgba(113, 128, 140, 0.28); background: var(--panel); display: flex; flex-direction: column; gap: 16px; transition: border-color 0.3s, transform 0.3s var(--ease); }
+  .prof:hover { border-color: var(--red); transform: translateY(-3px); }
+  .prof[hidden] { display: none; }
+  .prof__head { display: flex; gap: 16px; align-items: center; }
+  .prof__avatar { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 1px solid rgba(113, 128, 140, 0.5); background: radial-gradient(circle at 50% 35%, #34383D, #111214 70%); }
+  .prof__name { font-family: var(--f-display); font-weight: 700; font-size: 26px; letter-spacing: 0.03em; }
+  .prof__meta { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .prof__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prof__tags span { padding: 5px 9px; border: 1px solid var(--line-strong); font-size: 10px; letter-spacing: 0.08em; color: var(--muted-2); }
+  .prof__bio { font-size: 13px; line-height: 1.55; color: var(--muted); }
+  .prof__foot { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid rgba(113, 128, 140, 0.2); }
+  .prof__av { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.14em; color: var(--red); }
+  .prof__av span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .prof__av[data-av='none'] { color: var(--muted); }
+  .prof__foot .btn { opacity: 0.6; cursor: default; }
+  .dir__empty { padding: 40px; text-align: center; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
+
+  @media (max-width: 1100px) { .dir__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) {
+    .reg { grid-template-columns: 1fr; padding-bottom: 64px; }
+    .reg__side { position: static; }
+  }
+  @media (max-width: 640px) {
+    fieldset { padding: 20px 16px; }
+    .grid2 { grid-template-columns: 1fr; }
+    .dir__grid { grid-template-columns: 1fr; }
+    .dir__filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+    .dir__filters .chip { flex: none; }
+    .reg__submit .btn { width: 100%; }
+    .tab { flex: 1; padding: 0 12px; font-size: 11px; letter-spacing: 0.12em; }
+  }
+</style>
+
+<script>
+  import { registryService, validateProfile, type ArtistProfileInput } from '../lib/registry-service';
+
+  /* ---------- Pestañas ---------- */
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+  const select = (tab: HTMLButtonElement, focus = false) => {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')!)!.hidden = !on;
+    });
+    if (focus) tab.focus();
+    history.replaceState(null, '', tab.dataset.tab === 'dir' ? '#directory' : location.pathname);
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => select(t));
+    t.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') select(tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length], true);
+    });
+  });
+  if (location.hash === '#directory') select(tabs[1]);
+
+  /* ---------- Formulario: validación real, sin simular almacenamiento ---------- */
+  const form = document.querySelector<HTMLFormElement>('[data-reg-form]');
+  if (form) {
+    const count = form.querySelector<HTMLElement>('[data-spec-count]')!;
+    const result = form.querySelector<HTMLElement>('[data-result]')!;
+    const msg = { required: form.dataset.errRequired!, invalid: form.dataset.errInvalid! };
+    const specsBox = form.querySelector<HTMLElement>('[data-specs]')!;
+    form.addEventListener('change', () => {
+      count.textContent = String(form.querySelectorAll('input[name=specialties]:checked').length).padStart(2, '0');
+    });
+
+    const read = (): ArtistProfileInput => {
+      const fd = new FormData(form);
+      return {
+        name: String(fd.get('name') ?? ''), email: String(fd.get('email') ?? ''), location: String(fd.get('location') ?? ''),
+        experience: String(fd.get('experience') ?? ''), specialties: fd.getAll('specialties').map(String), bio: String(fd.get('bio') ?? ''),
+        portfolio: String(fd.get('portfolio') ?? ''), socials: String(fd.get('socials') ?? ''), availability: String(fd.get('availability') ?? ''),
+        additional: String(fd.get('additional') ?? ''),
+      };
+    };
+    const showErrors = (errors: Record<string, string>) => {
+      for (const name of ['name', 'email', 'portfolio']) {
+        const input = form.querySelector<HTMLInputElement>(`[name=${name}]`)!;
+        const err = input.parentElement!.querySelector<HTMLElement>('.err')!;
+        const e = errors[name] as 'required' | 'invalid' | undefined;
+        input.setAttribute('aria-invalid', String(!!e));
+        err.textContent = e ? msg[e] : '';
+      }
+      specsBox.querySelector<HTMLElement>(':scope > .err')!.textContent = errors.specialties ? form.dataset.errSpecs! : '';
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = read();
+      const errors = validateProfile(data);
+      showErrors(errors);
+      if (Object.keys(errors).length) {
+        form.querySelector<HTMLElement>('[aria-invalid=true]')?.focus();
+        result.hidden = true;
+        return;
+      }
+      if (!registryService.connected) {
+        result.textContent = form.dataset.ok!;
+        result.hidden = false;
+        return;
+      }
+      await registryService.submit(data);
+    });
+  }
+
+  /* ---------- Directorio ---------- */
+  const dir = document.querySelector<HTMLElement>('[data-dir]');
+  if (dir) {
+    const q = dir.querySelector<HTMLInputElement>('[data-dir-q]')!;
+    const fs = [...dir.querySelectorAll<HTMLButtonElement>('[data-dir-f]')];
+    const cards = [...dir.querySelectorAll<HTMLElement>('.prof')];
+    const empty = dir.querySelector<HTMLElement>('[data-dir-empty]')!;
+    let f = 'ALL';
+    const apply = () => {
+      const term = q.value.trim().toLowerCase();
+      let n = 0;
+      cards.forEach((c) => {
+        const on = (f === 'ALL' || c.dataset.tags!.split(' ').includes(f)) && (!term || c.dataset.search!.includes(term));
+        c.hidden = !on; if (on) n++;
+      });
+      empty.hidden = n > 0;
+    };
+    q.addEventListener('input', apply);
+    fs.forEach((b) => b.addEventListener('click', () => { f = b.dataset.dirF!; fs.forEach((x) => x.setAttribute('aria-pressed', String(x === b))); apply(); }));
+  }
+</script>

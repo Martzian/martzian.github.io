@@ -1,0 +1,24 @@
+// Configuración global del sitio. Edita aquí los enlaces reales.
+export const site = {
+  name: 'Martzian',
+  youtube: 'https://www.youtube.com/@TheMartzian',
+  portfolio: 'https://martzian.github.io/Portfolio/',
+  // Otras redes (se añaden al schema "sameAs" para que Google relacione los perfiles).
+  socials: [] as { label: string; url: string }[],
+
+  // Último video destacado en la Home. Déjalo en null para mostrar el placeholder.
+  // Ejemplo: { id: 'dQw4w9WgXcQ', title: { es: '...', en: '...' }, date: '2026-11-01', description: { es: '...', en: '...' } }
+  latestVideo: null as null | {
+    id: string;
+    title: { es: string; en: string };
+    description: { es: string; en: string };
+    date: string;
+  },
+
+  // Modelo 3D del personaje (GLB/GLTF). Ponlo en public/models/ y escribe la ruta relativa,
+  // p.ej. 'models/martzian.glb'. Si es null se usa la imagen de referencia.
+  characterModel: null as string | null,
+};
+
+export type Lang = 'es' | 'en';
+export type L10n = { es: string; en: string };

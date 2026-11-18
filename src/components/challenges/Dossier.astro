@@ -1,0 +1,92 @@
+---
+import type { Lang } from '../../data/site';
+import { ui } from '../../i18n/ui';
+import { asset } from '../../i18n/paths';
+import type { Challenge } from './types';
+
+interface Props { lang: Lang; c: Challenge; hidden: boolean }
+const { lang, c, hidden } = Astro.props;
+const t = ui[lang].challenges;
+const done = c.status === 'COMPLETED';
+const date = c.date ? new Date(c.date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' }) : t.unknownDate;
+const avatarTones = ['#34383D', '#2a2e33', '#3e2427', '#71808C', '#23272b', '#4a1418', '#34383D'];
+const winners = [...c.winners].sort((a, b) => a.place - b.place);
+---
+<article class="dossier" id={`dossier-${c.id}`} data-dossier={c.id} hidden={hidden}>
+  <header class="dossier__bar mono"><span>{t.dossier} · {c.id}</span><span>{c.placeholder ? t.classified : ''}</span></header>
+  <div class="dossier__body">
+    <div>
+      <span class="status-tag" data-status={c.status}><span></span>{t.status[c.status]}</span>
+      <h2 class="dossier__title">{c.title[lang]}</h2>
+      <p class="dossier__desc">{c.description[lang]}</p>
+    </div>
+    <dl class="dossier__facts">
+      <div><dt class="mono">{t.date}</dt><dd>{date}</dd></div>
+      <div><dt class="mono">{t.participants}</dt><dd>{c.participants ?? t.unknown} {t.registered}</dd></div>
+      <div class="wide"><dt class="mono">{t.prize}</dt><dd>{c.prize ? c.prize[lang] : t.noPrize}</dd></div>
+    </dl>
+    <div>
+      <div class="dossier__label mono">{t.participants}</div>
+      <div class="dossier__avatars" aria-hidden="true">
+        {avatarTones.map((bg) => <span style={`background:${bg}`}></span>)}
+        <em class="mono">+ {c.participants ?? t.unknown}</em>
+      </div>
+    </div>
+    <div>
+      <div class="dossier__label mono">{t.results}</div>
+      {done && winners.length ? (
+        <ol class="dossier__results">
+          {winners.map((w) => (
+            <li class:list={{ first: w.place === 1 }}>
+              <span class="place">{String(w.place).padStart(2, '0')}</span>
+              {w.avatar && <img src={asset(w.avatar)} alt="" width="32" height="32" loading="lazy" />}
+              <span class="name">{w.name}</span>
+              {w.prize && <span class="prize mono">{w.prize}</span>}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p class="dossier__pending mono">{t.pending}</p>
+      )}
+    </div>
+    {c.youtube ? (
+      <a href={`https://www.youtube.com/watch?v=${c.youtube}`} target="_blank" rel="noopener" class="btn btn--solid">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="#A51F24"><path d="M5 3 L13 8 L5 13 Z"></path></svg>{t.watchVideo}</a>
+    ) : (
+      <button type="button" class="btn btn--ghost" disabled>{t.noVideo}</button>
+    )}
+  </div>
+</article>
+
+<style>
+  .dossier.is-booting .dossier__body > * { animation: d-in 0.5s var(--ease) both; }
+  .dossier.is-booting .dossier__body > *:nth-child(2) { animation-delay: 0.06s; }
+  .dossier.is-booting .dossier__body > *:nth-child(3) { animation-delay: 0.12s; }
+  .dossier.is-booting .dossier__body > *:nth-child(4) { animation-delay: 0.18s; }
+  .dossier.is-booting .dossier__body > *:nth-child(5) { animation-delay: 0.24s; }
+  @keyframes d-in { from { opacity: 0; transform: translateX(10px); filter: blur(3px); } }
+  .dossier__bar { display: flex; justify-content: space-between; gap: 12px; padding: 16px 24px; border-bottom: 1px solid rgba(165, 31, 36, 0.5); font-size: 11px; letter-spacing: 0.18em; color: var(--red); }
+  .dossier__bar span:last-child { color: var(--muted); }
+  .dossier__body { padding: 28px 24px; display: flex; flex-direction: column; gap: 22px; }
+  .dossier__title { margin-top: 16px; font-size: clamp(40px, 4vw, 52px); line-height: 0.92; }
+  .dossier__desc { margin-top: 14px; font-size: 14px; line-height: 1.65; color: var(--muted); }
+  .dossier__facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(113, 128, 140, 0.2); border: 1px solid rgba(113, 128, 140, 0.2); }
+  .dossier__facts div { background: var(--panel); padding: 14px; }
+  .dossier__facts .wide { grid-column: span 2; }
+  .dossier__facts dt { font-size: 10px; letter-spacing: 0.18em; color: var(--steel); }
+  .dossier__facts dd { margin: 6px 0 0; font-size: 14px; }
+  .dossier__label { font-size: 10px; letter-spacing: 0.18em; color: var(--steel); margin-bottom: 12px; }
+  .dossier__avatars { display: flex; align-items: center; }
+  .dossier__avatars span { width: 40px; height: 40px; margin-right: -10px; border-radius: 50%; border: 2px solid var(--panel); }
+  .dossier__avatars em { margin-left: 22px; font-style: normal; font-size: 11px; color: var(--muted); }
+  .dossier__results { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .dossier__results li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid rgba(113, 128, 140, 0.3); }
+  .dossier__results li.first { border-color: rgba(255, 55, 55, 0.4); background: rgba(165, 31, 36, 0.08); }
+  .dossier__results .place { font-family: var(--f-display); font-weight: 800; font-size: 26px; color: var(--muted-2); }
+  .dossier__results .first .place { color: var(--red); }
+  .dossier__results img { border-radius: 50%; }
+  .dossier__results .name { flex: 1; }
+  .dossier__results .prize { font-size: 10px; color: var(--muted); }
+  .dossier__pending { padding: 16px; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.1em; color: var(--muted); }
+  .dossier .btn[disabled] { background: transparent; border-color: var(--line-strong); color: var(--muted); }
+</style>
