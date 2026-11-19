@@ -184,6 +184,7 @@ p { margin: 0; }
 .site-footer nav a { color: var(--muted); }
 .hex-egg { background: none; border: 0; padding: 8px 0; color: inherit; font: inherit; letter-spacing: inherit; cursor: pointer; }
 .hex-egg:hover { color: var(--white); }
+.hex-egg.is-late { color: var(--red); cursor: default; animation: mz-glitch 0.4s steps(2) 3; }
 
 /* ---------- Cursor personalizado ---------- */
 .cursor { position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none; display: none; }

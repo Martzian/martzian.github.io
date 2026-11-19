@@ -2,58 +2,151 @@
 import type { Lang } from '../../data/site';
 import { ui } from '../../i18n/ui';
 import { asset } from '../../i18n/paths';
-import type { Challenge } from './types';
+import type { Challenge, CriterionDef, CriterionIcon } from './types';
+import { rank, resolveCriteria, fmtTime, fmtValue, label, shortLabel, type Ranked } from './scoring';
 
 interface Props { lang: Lang; c: Challenge; hidden: boolean }
 const { lang, c, hidden } = Astro.props;
 const t = ui[lang].challenges;
 const done = c.status === 'COMPLETED';
-const date = c.date ? new Date(c.date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' }) : t.unknownDate;
-const avatarTones = ['#34383D', '#2a2e33', '#3e2427', '#71808C', '#23272b', '#4a1418', '#34383D'];
-const winners = [...c.winners].sort((a, b) => a.place - b.place);
+const criteria = resolveCriteria(c.criteria);
+const ranked = rank(c.results, criteria);
+const winners = done ? ranked.slice(0, 3) : [];
+const people = done ? ranked : ranked.map((r) => ({ ...r, place: 0 }));
+const pad = (n: number) => String(n).padStart(2, '0');
+const rules = (c.rules?.[lang] ?? []).filter((r) => r.trim());
+
+/** "MENOS MUERTES", "MENOR TIEMPO", "MÁS PUNTOS"… */
+const best = (k: CriterionDef) => (k.type === 'time' ? t.best.time[k.order] : t.best.count[k.order](label(k, lang)));
+/** Por qué quedó en ese puesto, frente al rival de referencia */
+const reason = (w: Ranked) => {
+  if (w.decidedAt < 0) return t.fullTie;
+  const k = criteria[w.decidedAt];
+  const tied = criteria.slice(0, w.decidedAt).map((x) => label(x, lang)).join(t.and);
+  const main = w.place === 1
+    ? t.winsBy(best(k))
+    : t.gap[k.order](k.type === 'time' ? fmtTime(w.gap) : `${w.gap} ${label(k, lang)}`);
+  return tied ? `${main} · ${t.tiedOn(tied)}` : main;
+};
+
+const ICONS: Record<CriterionIcon, string> = {
+  skull: '<path d="M7 1.5 C 3.8 1.5 2 3.6 2 6.2 C 2 8 3 9.2 4 9.8 V12 H10 V9.8 C 11 9.2 12 8 12 6.2 C 12 3.6 10.2 1.5 7 1.5 Z"></path><circle cx="5" cy="6.5" r="1"></circle><circle cx="9" cy="6.5" r="1"></circle>',
+  clock: '<circle cx="7" cy="7" r="5.5"></circle><path d="M7 4 V7 L9 8.5"></path>',
+  bolt: '<path d="M8 1.5 L3 8 H7 L6 12.5 L11 6 H7 Z"></path>',
+  star: '<path d="M7 1 L8.8 5 L13 5.4 L9.8 8.2 L10.8 12.5 L7 10.2 L3.2 12.5 L4.2 8.2 L1 5.4 L5.2 5 Z"></path>',
+  hash: '<path d="M5 1.5 L4 12.5 M10 1.5 L9 12.5 M2 5 H12.5 M1.5 9 H12"></path>',
+};
+const cols = criteria.map((k) => (k.type === 'time' ? '120px' : '100px')).join(' ');
+const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' ');
 ---
 <article class="dossier" id={`dossier-${c.id}`} data-dossier={c.id} hidden={hidden}>
-  <header class="dossier__bar mono"><span>{t.dossier} · {c.id}</span><span>{c.placeholder ? t.classified : ''}</span></header>
+  <header class="dossier__bar mono">
+    <span>{t.dossier} · {c.id}</span>
+    <span class="dossier__st" data-status={c.status}><span></span>{t.status[c.status]}</span>
+  </header>
+
   <div class="dossier__body">
     <div>
-      <span class="status-tag" data-status={c.status}><span></span>{t.status[c.status]}</span>
       <h2 class="dossier__title">{c.title[lang]}</h2>
       <p class="dossier__desc">{c.description[lang]}</p>
     </div>
-    <dl class="dossier__facts">
-      <div><dt class="mono">{t.date}</dt><dd>{date}</dd></div>
-      <div><dt class="mono">{t.participants}</dt><dd>{c.participants ?? t.unknown} {t.registered}</dd></div>
-      <div class="wide"><dt class="mono">{t.prize}</dt><dd>{c.prize ? c.prize[lang] : t.noPrize}</dd></div>
-    </dl>
-    <div>
-      <div class="dossier__label mono">{t.participants}</div>
-      <div class="dossier__avatars" aria-hidden="true">
-        {avatarTones.map((bg) => <span style={`background:${bg}`}></span>)}
-        <em class="mono">+ {c.participants ?? t.unknown}</em>
+
+    {rules.length > 0 && (
+      <div class="rules">
+        <button type="button" class="rules__toggle mono" aria-expanded="false" aria-controls={`rules-${c.id}`} data-collapse>
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="#FF3737" stroke-width="1.4"><path d="M3 2.5 H11 L13 4.5 V13.5 H3 Z"></path><path d="M5.5 6.5 H10.5 M5.5 9 H10.5 M5.5 11.5 H8.5"></path></svg>
+          <span class="rules__label">{t.rules} · {pad(rules.length)}</span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 6 L8 10.5 L12.5 6"></path></svg>
+        </button>
+        <div class="rules__box" id={`rules-${c.id}`} hidden>
+          <ol>
+            {rules.map((r, i) => <li><span class="n">{pad(i + 1)}</span><span>{r}</span></li>)}
+          </ol>
+        </div>
       </div>
-    </div>
-    <div>
-      <div class="dossier__label mono">{t.results}</div>
-      {done && winners.length ? (
-        <ol class="dossier__results">
-          {winners.map((w) => (
-            <li class:list={{ first: w.place === 1 }}>
-              <span class="place">{String(w.place).padStart(2, '0')}</span>
-              {w.avatar && <img src={asset(w.avatar)} alt="" width="32" height="32" loading="lazy" />}
-              <span class="name">{w.name}</span>
-              {w.prize && <span class="prize mono">{w.prize}</span>}
-            </li>
-          ))}
-        </ol>
+    )}
+
+    <figure class="dossier__img">
+      <span class="dossier__corner tl" aria-hidden="true"></span><span class="dossier__corner tr" aria-hidden="true"></span>
+      <span class="dossier__corner bl" aria-hidden="true"></span><span class="dossier__corner br" aria-hidden="true"></span>
+      {c.winnersImage ? (
+        <img src={asset(c.winnersImage)} alt={`${t.img[c.status]} — ${c.title[lang]}`} loading="lazy" />
       ) : (
-        <p class="dossier__pending mono">{t.pending}</p>
+        <figcaption class="dossier__img-ph">
+          <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" fill="none" stroke="#71808C" stroke-width="1.4"><rect x="5" y="9" width="34" height="26"></rect><circle cx="16" cy="19" r="3.5"></circle><path d="M5 31 L16 23 L24 29 L30 24 L39 31"></path></svg>
+          <span class="mono">{t.img[c.status]}</span>
+        </figcaption>
       )}
-    </div>
-    {c.youtube ? (
-      <a href={`https://www.youtube.com/watch?v=${c.youtube}`} target="_blank" rel="noopener" class="btn btn--solid">
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="#A51F24"><path d="M5 3 L13 8 L5 13 Z"></path></svg>{t.watchVideo}</a>
+    </figure>
+
+    {done && winners.length > 0 ? (
+      <>
+        <div>
+          <div class="dossier__rank-head">
+            <span class="dossier__label mono">{t.ranking}</span>
+            <span class="dossier__crits">
+              {criteria.map((k, i) => (
+                <span class="crit mono">
+                  <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3" set:html={ICONS[k.icon]}></svg>
+                  {i + 1} · {best(k)}{i > 0 && <span class="crit__long"> {t.tiebreak}</span>}
+                </span>
+              ))}
+            </span>
+          </div>
+          <ol class="winners">
+            {winners.map((w) => (
+              <li class:list={['winner', { first: w.place === 1 }]}>
+                <span class="winner__rank">{pad(w.place)}</span>
+                <span class="winner__avatar" aria-hidden="true">{w.avatar && <img src={asset(w.avatar)} alt="" width="44" height="44" loading="lazy" />}</span>
+                <span class="winner__who">
+                  <span class="winner__name">{w.name}</span>
+                  <span class="winner__reason mono"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6.5 L5 9 L10 3"></path></svg>{reason(w)}</span>
+                </span>
+                <span class="winner__stats">
+                  {criteria.map((k, i) => (
+                    <span class:list={['stat', `stat--${k.type}`, { 'is-decisive': i === w.decidedAt }]} title={k.label[lang]}>
+                      <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3" set:html={ICONS[k.icon]}></svg>
+                      <span class="sr-only">{k.label[lang]}: </span>{fmtValue(w.values[i], k)}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        {c.youtube ? (
+          <a href={`https://www.youtube.com/watch?v=${c.youtube}`} target="_blank" rel="noopener" class="btn btn--solid dossier__cta">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="#A51F24"><path d="M5 3 L13 8 L5 13 Z"></path></svg>{t.watchVideo}</a>
+        ) : (
+          <button type="button" class="btn btn--ghost dossier__cta" disabled>{t.noVideo}</button>
+        )}
+      </>
     ) : (
-      <button type="button" class="btn btn--ghost" disabled>{t.noVideo}</button>
+      <p class="dossier__pending mono">{c.status === 'COMPLETED' ? t.pending.ACTIVE : t.pending[c.status]}</p>
+    )}
+
+    {people.length > 0 && (
+      <div class="people">
+        <button type="button" class="people__toggle mono" aria-expanded="false" aria-controls={`people-${c.id}`} data-collapse>
+          <span>{t.participants} · {pad(people.length)}</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 6 L8 10.5 L12.5 6"></path></svg>
+        </button>
+        <div class="people__table" id={`people-${c.id}`} style={`--cols:${cols};--cols-m:${colsM}`} hidden>
+          <div class="people__row people__row--head mono" aria-hidden="true">
+            <span>#</span><span>{t.colName}</span>
+            {criteria.map((k) => <span><span class="long">{label(k, lang)}</span><span class="short">{shortLabel(k, lang)}</span></span>)}
+          </div>
+          <ol>
+            {people.map((p) => (
+              <li class="people__row">
+                <span class:list={['pos', { top: done && p.place <= 3 }]}>{done ? pad(p.place) : '—'}</span>
+                <span class="name">{p.name}</span>
+                {criteria.map((k, i) => <span class="num"><span class="sr-only">{k.label[lang]}: </span>{done ? fmtValue(p.values[i], k) : '—'}</span>)}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
     )}
   </div>
 </article>
@@ -65,28 +158,111 @@ const winners = [...c.winners].sort((a, b) => a.place - b.place);
   .dossier.is-booting .dossier__body > *:nth-child(4) { animation-delay: 0.18s; }
   .dossier.is-booting .dossier__body > *:nth-child(5) { animation-delay: 0.24s; }
   @keyframes d-in { from { opacity: 0; transform: translateX(10px); filter: blur(3px); } }
-  .dossier__bar { display: flex; justify-content: space-between; gap: 12px; padding: 16px 24px; border-bottom: 1px solid rgba(165, 31, 36, 0.5); font-size: 11px; letter-spacing: 0.18em; color: var(--red); }
-  .dossier__bar span:last-child { color: var(--muted); }
-  .dossier__body { padding: 28px 24px; display: flex; flex-direction: column; gap: 22px; }
-  .dossier__title { margin-top: 16px; font-size: clamp(40px, 4vw, 52px); line-height: 0.92; }
-  .dossier__desc { margin-top: 14px; font-size: 14px; line-height: 1.65; color: var(--muted); }
-  .dossier__facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(113, 128, 140, 0.2); border: 1px solid rgba(113, 128, 140, 0.2); }
-  .dossier__facts div { background: var(--panel); padding: 14px; }
-  .dossier__facts .wide { grid-column: span 2; }
-  .dossier__facts dt { font-size: 10px; letter-spacing: 0.18em; color: var(--steel); }
-  .dossier__facts dd { margin: 6px 0 0; font-size: 14px; }
-  .dossier__label { font-size: 10px; letter-spacing: 0.18em; color: var(--steel); margin-bottom: 12px; }
-  .dossier__avatars { display: flex; align-items: center; }
-  .dossier__avatars span { width: 40px; height: 40px; margin-right: -10px; border-radius: 50%; border: 2px solid var(--panel); }
-  .dossier__avatars em { margin-left: 22px; font-style: normal; font-size: 11px; color: var(--muted); }
-  .dossier__results { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  .dossier__results li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid rgba(113, 128, 140, 0.3); }
-  .dossier__results li.first { border-color: rgba(255, 55, 55, 0.4); background: rgba(165, 31, 36, 0.08); }
-  .dossier__results .place { font-family: var(--f-display); font-weight: 800; font-size: 26px; color: var(--muted-2); }
-  .dossier__results .first .place { color: var(--red); }
-  .dossier__results img { border-radius: 50%; }
-  .dossier__results .name { flex: 1; }
-  .dossier__results .prize { font-size: 10px; color: var(--muted); }
-  .dossier__pending { padding: 16px; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.1em; color: var(--muted); }
+
+  .dossier__bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid rgba(165, 31, 36, 0.5); font-size: 11px; letter-spacing: 0.18em; color: var(--red); }
+  .dossier__st { display: flex; align-items: center; gap: 8px; color: var(--st); }
+  .dossier__st span { width: 6px; height: 6px; border-radius: 50%; background: var(--st); }
+  .dossier__st[data-status='COMPLETED'] { --st: #9aa6b0; }
+  .dossier__st[data-status='ACTIVE'] { --st: #FF3737; }
+  .dossier__st[data-status='ACTIVE'] span { animation: mz-pulse 1.6s infinite; }
+  .dossier__st[data-status='UPCOMING'] { --st: #D7D7D7; }
+
+  .dossier__body { padding: 24px; display: flex; flex-direction: column; gap: 22px; }
+  .dossier__title { margin: 0; font-size: clamp(40px, 4vw, 52px); line-height: 0.92; letter-spacing: 0.02em; }
+  .dossier__desc { margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
+
+  .dossier__img { position: relative; margin: 0; aspect-ratio: 16 / 9; overflow: hidden; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 40%, #2a0a0d, #0a0a0b 70%); border: 1px solid rgba(113, 128, 140, 0.3); }
+  .dossier__img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .dossier__corner { position: absolute; z-index: 1; width: 22px; height: 22px; border: 0 solid var(--red); }
+  .dossier__corner.tl { left: 10px; top: 10px; border-left-width: 2px; border-top-width: 2px; }
+  .dossier__corner.tr { right: 10px; top: 10px; border-right-width: 2px; border-top-width: 2px; }
+  .dossier__corner.bl { left: 10px; bottom: 10px; border-left-width: 2px; border-bottom-width: 2px; }
+  .dossier__corner.br { right: 10px; bottom: 10px; border-right-width: 2px; border-bottom-width: 2px; }
+  .dossier__img-ph { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; text-align: center; font-size: 11px; color: var(--muted); }
+
+  .dossier__rank-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .dossier__label { font-size: 10px; letter-spacing: 0.18em; color: var(--steel); }
+  .dossier__crits { display: flex; gap: 8px; flex-wrap: wrap; }
+  .crit { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid rgba(113, 128, 140, 0.35); border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; color: var(--muted-2); }
+
+  .winners { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .winner { --bd: rgba(113, 128, 140, 0.3); display: grid; grid-template-columns: 56px 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--bd); }
+  .winner.first { --bd: rgba(255, 55, 55, 0.5); background: rgba(165, 31, 36, 0.1); }
+  .winner__rank { font-family: var(--f-display); font-weight: 800; font-size: 40px; line-height: 1; color: var(--muted-2); }
+  .winner.first .winner__rank { color: var(--red); }
+  .winner__avatar { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; border: 1px solid var(--bd); background: radial-gradient(circle at 50% 35%, #34383D, #111214 70%); }
+  .winner__avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .winner__who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .winner__name { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: 0.03em; overflow-wrap: anywhere; }
+  .winner__reason { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.12em; line-height: 1.4; color: var(--muted); }
+  .winner__reason svg { flex: none; }
+  .winner.first .winner__reason { color: var(--red); }
+  .winner__stats { display: flex; gap: 6px; }
+  .stat { --c: rgba(113, 128, 140, 0.35); --ic: var(--steel); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--c); font-family: var(--f-mono); font-size: 12px; color: var(--white); white-space: nowrap; }
+  .stat svg { color: var(--ic); }
+  /* Resalta el criterio que decidió la posición */
+  .stat.is-decisive { --c: var(--red); --ic: var(--red); background: rgba(255, 55, 55, 0.12); }
+
+  .dossier__cta { width: 100%; }
   .dossier .btn[disabled] { background: transparent; border-color: var(--line-strong); color: var(--muted); }
+  .dossier__pending { margin: 0; padding: 16px; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.1em; line-height: 1.5; color: var(--muted); }
+
+.rules__toggle { min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 10px; border-radius: 999px; background: transparent; border: 1px solid rgba(113, 128, 140, 0.35); color: var(--white); font-size: 11px; letter-spacing: 0.16em; cursor: pointer; transition: border-color 0.25s, background 0.25s; }
+  .rules__toggle:hover { border-color: var(--white); }
+  .rules__toggle[aria-expanded='true'] { background: var(--black-red); border-color: var(--blood); }
+  .rules__toggle .chev { transition: transform 0.3s var(--ease); }
+  .rules__toggle[aria-expanded='true'] .chev { transform: rotate(180deg); }
+  .rules__box { margin-top: 10px; padding: 16px 18px; border: 1px solid var(--line); border-left: 2px solid var(--blood); background: var(--panel); }
+  .rules__box ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .rules__box li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.55; color: var(--muted-2); }
+  .rules__box .n { padding-top: 2px; font-family: var(--f-mono); font-size: 11px; color: var(--red); }
+  .rules__note { margin: 14px 0 0; font-size: 10px; letter-spacing: 0.12em; line-height: 1.5; color: var(--steel); }
+
+  .people { border-top: 1px solid rgba(113, 128, 140, 0.2); padding-top: 18px; }
+  .people__toggle { width: 100%; min-height: 50px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-radius: 999px; background: transparent; border: 1px solid rgba(113, 128, 140, 0.35); color: var(--white); font-size: 11px; letter-spacing: 0.16em; cursor: pointer; transition: border-color 0.25s; }
+  .people__toggle:hover { border-color: var(--white); }
+  .people__toggle svg { transition: transform 0.3s var(--ease); }
+  .people__toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+  .people__table { margin-top: 10px; border: 1px solid var(--line); }
+  .people__table ol { margin: 0; padding: 0; list-style: none; }
+  .people__row { display: grid; grid-template-columns: 48px minmax(0, 1fr) var(--cols); gap: 12px; align-items: center; padding: 11px 16px; border-top: 1px solid rgba(113, 128, 140, 0.12); font-size: 13px; }
+  .people__row--head { padding-block: 10px; border-top: 0; background: var(--panel); font-size: 10px; letter-spacing: 0.14em; color: var(--steel); }
+  .people__row--head .short { display: none; }
+  .people__row .pos, .people__row .num { font-family: var(--f-mono); font-size: 12px; color: var(--muted-2); }
+  .people__row .pos { color: var(--steel); }
+  .people__row .pos.top { color: var(--red); }
+  .people__row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  @media (max-width: 560px) {
+    .dossier__bar { padding: 14px 16px; font-size: 10px; letter-spacing: 0.16em; }
+    .dossier__body { padding: 18px 16px 20px; gap: 18px; }
+    .dossier__title { font-size: 40px; }
+    .dossier__img { aspect-ratio: 4 / 3; }
+    .dossier__rank-head { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .crit { padding: 5px 10px; font-size: 9px; letter-spacing: 0.08em; }
+    .crit__long { display: none; }
+    .winner { grid-template-columns: auto 36px minmax(0, 1fr); gap: 10px 12px; padding: 12px; }
+    .winner__rank { font-size: 34px; }
+    .winner__avatar { width: 36px; height: 36px; }
+    .winner__name { font-size: 20px; }
+    .winner__who { display: contents; }
+    .winner__name { grid-column: 3; grid-row: 1; }
+    .winner__stats { grid-column: 1 / -1; grid-row: 2; }
+    .winner__reason { grid-column: 1 / -1; grid-row: 3; font-size: 9px; letter-spacing: 0.1em; }
+    .stat { flex: 1; min-height: 36px; padding: 0 10px; }
+    .stat--time { flex: 1.4; }
+    .stat--count { flex: 1; }
+    .rules__toggle { width: 100%; min-height: 46px; letter-spacing: 0.14em; }
+    .rules__label { flex: 1; text-align: left; }
+    .rules__box { padding: 14px; }
+    .rules__box li { grid-template-columns: 24px minmax(0, 1fr); gap: 6px; line-height: 1.5; }
+    .rules__box .n { font-size: 10px; }
+    .rules__note { margin-top: 12px; font-size: 9px; letter-spacing: 0.1em; }
+    .people__toggle { min-height: 48px; padding: 0 18px; letter-spacing: 0.14em; }
+    .people__row { grid-template-columns: 30px minmax(0, 1fr) var(--cols-m); gap: 8px; padding: 10px 12px; }
+    .people__row--head { padding-block: 9px; font-size: 9px; letter-spacing: 0.1em; }
+    .people__row--head .long { display: none; }
+    .people__row--head .short { display: inline; }
+    .people__row .pos, .people__row .num { font-size: 11px; }
+  }
 </style>

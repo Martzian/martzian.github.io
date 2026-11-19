@@ -9,8 +9,9 @@ export function href(lang: Lang, slug = ''): string {
   return BASE + prefix + (s ? s + '/' : '');
 }
 
-/** Recurso estático dentro de public/. */
+/** Recurso estático dentro de public/, o una URL externa completa (https://…), que se deja tal cual. */
 export function asset(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
   return BASE + path.replace(/^\//, '');
 }
 

@@ -132,7 +132,7 @@ const current = (s: string) => (s === slug ? 'page' : undefined);
       {openModules.map((m) => <a href={href(lang, m.slug)}>{m.name[lang]}</a>)}
       <a href={site.youtube} rel="me noopener" target="_blank">YOUTUBE ↗</a>
     </nav>
-    <button type="button" class="hex-egg" data-hex-egg data-plain={t.footerEgg} aria-label="4D 41 52 54 5A 49 41 4E">4D 41 52 54 5A 49 41 4E</button>
+    <button type="button" class="hex-egg" data-hex-egg data-plain={t.footerEgg} data-gone={t.goneMsg} aria-label="4D 41 52 54 5A 49 41 4E">4D 41 52 54 5A 49 41 4E</button>
     <span>© {new Date().getFullYear()} MARTZIAN · {t.footerCopy}</span>
   </footer>}
 

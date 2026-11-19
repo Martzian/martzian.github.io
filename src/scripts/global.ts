@@ -80,13 +80,40 @@ function initEggs() {
     buffer = (buffer + e.key.toLowerCase()).slice(-8);
     if (buffer === 'martzian') { buffer = ''; flashEgg(msg); }
   });
-  // 2) El código hexadecimal del footer se decodifica
+  // 2) El código hexadecimal del footer se decodifica.
+  //    En la home, si se deja decodificado y el visitante sube, Martzian desaparece del hero;
+  //    al volver a pulsarlo, el footer dice que ya es muy tarde. Volver a pulsar sin subir lo deja todo igual.
   const hex = document.querySelector<HTMLButtonElement>('[data-hex-egg]');
   if (hex) {
     const original = hex.textContent ?? '';
+    const decoded = 'MARTZIAN · ' + (hex.dataset.plain ?? '');
+    const hero = document.querySelector<HTMLElement>('[data-hero]');
+    let state: 'hex' | 'decoded' | 'vanished' | 'late' = 'hex';
+    let lowest = 0; // punto más bajo alcanzado desde que se decodificó
+
+    const onScroll = () => {
+      if (scrollY > lowest) lowest = scrollY;
+      else if (lowest - scrollY > 120) { // subió
+        state = 'vanished';
+        hero!.classList.add('hero--vanished');
+        removeEventListener('scroll', onScroll);
+      }
+    };
+
     hex.addEventListener('click', () => {
-      const plain = hex.dataset.plain ?? 'MARTZIAN';
-      hex.textContent = hex.textContent === original ? 'MARTZIAN · ' + plain : original;
+      if (state === 'hex') {
+        state = 'decoded';
+        hex.textContent = decoded;
+        if (hero) { lowest = scrollY; addEventListener('scroll', onScroll, { passive: true }); }
+      } else if (state === 'decoded') {
+        state = 'hex';
+        hex.textContent = original;
+        removeEventListener('scroll', onScroll);
+      } else if (state === 'vanished') {
+        state = 'late';
+        hex.textContent = hex.dataset.gone ?? '';
+        hex.classList.add('is-late');
+      }
     });
   }
   // 3) Para los curiosos que abren la consola

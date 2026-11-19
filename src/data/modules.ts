@@ -16,31 +16,31 @@ export interface FacilityModule {
 export const modules: FacilityModule[] = [
   {
     n: '01', slug: '', status: 'open',
-    name: { es: 'HOME', en: 'HOME' },
+    name: { es: 'INICIO', en: 'HOME' },
     code: { es: 'NÚCLEO · INICIO', en: 'CORE · HOME' },
     desc: { es: 'El punto de despertar. Origen de Martzian y estado del sistema.', en: 'The waking point. Martzian’s origin and the system status.' },
     short: { es: 'INICIO', en: 'HOME' },
   },
   {
     n: '02', slug: 'challenges', status: 'open',
-    name: { es: 'CHALLENGES', en: 'CHALLENGES' },
+    name: { es: 'IDV CHALLENGES', en: 'IDV CHALLENGES' },
     code: { es: 'ARCHIVO DE PRUEBAS', en: 'TRIAL ARCHIVE' },
     desc: { es: 'Expedientes de cada prueba, participantes y el Hall of Fame.', en: 'Files for every trial, its participants and the Hall of Fame.' },
-    short: { es: 'PRUEBAS', en: 'TRIALS' },
+    short: { es: 'CHALLENGES', en: 'TRIALS' },
   },
   {
     n: '03', slug: 'portfolio', status: 'open',
-    name: { es: 'PORTFOLIO', en: 'PORTFOLIO' },
+    name: { es: 'PORTAFOLIO', en: 'PORTFOLIO' },
     code: { es: 'BASE DEL CREADOR', en: 'CREATOR DATABASE' },
     desc: { es: 'Artefactos del creador: 3D, desarrollo y trabajo profesional.', en: 'The creator’s artifacts: 3D, development and professional work.' },
-    short: { es: 'ARCHIVO', en: 'ARCHIVE' },
+    short: { es: 'PORTAFOLIO', en: 'ARCHIVE' },
   },
   {
     n: '04', slug: 'registry', status: 'open',
-    name: { es: 'ARTIST REGISTRY', en: 'ARTIST REGISTRY' },
+    name: { es: 'ARTISTAS', en: 'ARTIST REGISTRY' },
     code: { es: 'INGRESO / DIRECTORIO', en: 'INTAKE / DIRECTORY' },
     desc: { es: 'Regístrate como artista y únete a la red de colaboradores.', en: 'Sign up as an artist and join the collaborator network.' },
-    short: { es: 'REGISTRO', en: 'REGISTRY' },
+    short: { es: 'ARTISTAS', en: 'REGISTRY' },
   },
   {
     n: '05', slug: 'virtual-worlds', status: 'sealed',

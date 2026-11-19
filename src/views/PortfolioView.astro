@@ -51,12 +51,34 @@ const t = ui[lang].portfolio;
   /* Modo inmersivo: la página no hace scroll; header arriba y el resto es el portafolio */
   body.immersive { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
   body.immersive > main { flex: 1; min-height: 0; display: flex; }
+
+  /* Móvil: sin header, el dock flota abajo como en el resto del sitio y el portafolio
+     mide "alto visible - --pf-gap", así termina por encima del dock.
+     --app-h = alto visible real (lo pone el script con innerHeight; esto es el respaldo). */
+  @media (max-width: 960px) {
+    body.immersive {
+      --pf-gap: 100px; /* ← espacio reservado abajo para el dock; súbelo si aún se tapa */
+      --app-h: 100vh;
+      height: var(--app-h); padding-bottom: 0; background: #080808;
+    }
+    @supports (height: 100svh) { body.immersive { --app-h: 100svh; } }
+    body.immersive > .site-header { display: none; }
+    body.immersive > main { flex: none; flex-direction: column; height: calc(var(--app-h) - var(--pf-gap)); }
+  }
 </style>
 
 <style>
   .pf { position: relative; flex: 1; min-height: 0; background: #080808; overflow: hidden; }
   .pf iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #080808; opacity: 0; transition: opacity 0.9s; }
   [data-state='embed'] iframe { opacity: 1; }
+  @media (max-width: 960px) {
+    /* Borde inferior del portafolio: línea fina + leve fundido hacia la zona del dock */
+    .pf { border-bottom: 1px solid rgba(113, 128, 140, 0.22); }
+    .pf::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; pointer-events: none;
+      background: linear-gradient(180deg, transparent, rgba(8, 8, 8, 0.6));
+    }
+  }
 
   .pf__loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; transition: opacity 0.6s; pointer-events: none; }
   [data-state='embed'] .pf__loading, [data-state='gate'] .pf__loading { opacity: 0; }
@@ -82,6 +104,12 @@ const t = ui[lang].portfolio;
 </style>
 
 <script>
+  // Alto visible real del teléfono (descuenta las barras del navegador); se actualiza si cambian
+  const setAppH = () => document.body.style.setProperty('--app-h', innerHeight + 'px');
+  setAppH();
+  addEventListener('resize', setAppH);
+  visualViewport?.addEventListener('resize', setAppH);
+
   const viewer = document.querySelector<HTMLElement>('[data-viewer]');
   const frame = viewer?.querySelector<HTMLIFrameElement>('[data-frame]');
   if (viewer && frame) {

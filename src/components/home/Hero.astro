@@ -122,6 +122,11 @@ const model = site.characterModel ? asset(site.characterModel) : '';
   .hero__light:not([style*='mask']) { display: none; }
 
   .hero--model .hero__figure { opacity: 0; }
+  /* Easter egg del footer: el sujeto ya no está */
+  .hero--vanished :is(.hero__figure, .hero__canvas, .hero__ghost) {
+    opacity: 0 !important; visibility: hidden; pointer-events: none;
+    transition: opacity 0.6s, visibility 0s 0.6s;
+  }
   .hero--alarm .hero__glow { background: radial-gradient(circle, rgba(255, 55, 55, 0.5) 0%, transparent 65%); animation: mz-pulse 0.3s steps(2) 6; }
   .hero--alarm .hero__light { --li: 1 !important; filter: hue-rotate(-10deg) saturate(3); animation: mz-pulse 0.3s steps(2) 6; }
   .hero__canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

@@ -1,75 +1,64 @@
 {
-  "_comment": "Archivo de challenges. TODO el contenido actual es de EJEMPLO (placeholder: true). Reemplázalo con los datos reales y pon placeholder en false. status: COMPLETED | ACTIVE | UPCOMING. date: AAAA-MM-DD o null. youtube: ID del video o null. thumbnail: ruta dentro de public/ o null.",
+  "_comment": "Archivo de challenges. status: COMPLETED | ACTIVE | UPCOMING. date: AAAA-MM-DD o null. youtube: ID del video o null. thumbnail / winnersImage: ruta dentro de public/ o null. placeholder: true muestra el aviso de contenido de ejemplo. rules: { es: [...], en: [...] } — una regla por línea (listas vacías ocultan la sección). criteria: criterios de comparación EN ORDEN DE PRIORIDAD; el primero decide y los siguientes desempatan. Predefinidos: \"deaths\" (menos muertes), \"time\" (menor tiempo), \"powers\" (menos poderes usados), \"points\" (más puntos). Cada uno trae un orden por defecto (muertes, tiempo y poderes: gana el MENOR; puntos: gana el MAYOR); para invertirlo añade :asc (gana el menor) o :desc (gana el mayor). Ejemplos: [\"deaths\", \"time\"] · [\"time\"] · [\"powers\", \"time\"] · [\"deaths:desc\"] (más muertes gana) · [\"deaths\", \"time:desc\"] (menos muertes; desempata el MAYOR tiempo). Criterio propio: { \"id\": \"saves\", \"type\": \"count\" | \"time\", \"order\": \"asc\" (gana el menor) | \"desc\" (gana el mayor), \"icon\": \"skull\" | \"clock\" | \"bolt\" | \"star\" | \"hash\", \"label\": { \"es\": \"Rescates\", \"en\": \"Rescues\" }, \"short\": { \"es\": \"Resc.\", \"en\": \"Resc.\" } }. Si no pones criteria se usa [\"deaths\", \"time\"]. results: participantes { name, avatar, scores } — scores lleva un valor por cada id de criteria; el tiempo puede ir en milisegundos (873483) o como texto \"14:33.483\". En challenges ACTIVOS/PRÓXIMOS deja scores vacío {}. El ranking se calcula solo.",
   "challenges": [
     {
-      "id": "T-006", "number": "06", "status": "UPCOMING", "date": null, "placeholder": true,
-      "title": { "es": "SECTOR SELLADO", "en": "SEALED SECTOR" },
-      "summary": { "es": "Ejemplo · Diseño de un entorno de horror explorable.", "en": "Sample · Design an explorable horror environment." },
-      "description": { "es": "Challenge de ejemplo. Reemplazar con la descripción real del challenge, reglas, formato de entrega y jurado.", "en": "Sample challenge. Replace with the real description, rules, submission format and judges." },
-      "prize": null, "participants": null, "winners": [], "youtube": null, "thumbnail": null
-    },
-    {
-      "id": "T-005", "number": "05", "status": "ACTIVE", "date": null, "placeholder": true,
-      "title": { "es": "EXTREMIDAD BIOMECÁNICA", "en": "BIOMECH LIMB" },
-      "summary": { "es": "Ejemplo · Modelar una extremidad biomecánica funcional.", "en": "Sample · Model a working biomechanical limb." },
-      "description": { "es": "Challenge de ejemplo actualmente en curso. Aquí se mostrarán reglas, fecha de cierre y cómo participar.", "en": "Sample challenge in progress. Rules, closing date and how to enter will show here." },
-      "prize": null, "participants": null, "winners": [], "youtube": null, "thumbnail": null
-    },
-    {
-      "id": "T-004", "number": "04", "status": "COMPLETED", "date": null, "placeholder": true,
-      "title": { "es": "ROSTRO SUTURADO", "en": "SUTURED FACE" },
-      "summary": { "es": "Ejemplo · Escultura de personaje con rasgos intervenidos.", "en": "Sample · Sculpt a character with altered features." },
-      "description": { "es": "Expediente de ejemplo. Describe el objetivo del challenge, las restricciones y lo que el jurado evaluó. Todos los datos son placeholder.", "en": "Sample file. Describes the challenge goal, its constraints and what the judges assessed. All data is placeholder." },
-      "prize": { "es": "[PREMIO DEL CHALLENGE]", "en": "[CHALLENGE PRIZE]" },
-      "participants": null,
-      "winners": [
-        { "place": 1, "name": "[GANADOR 1.º LUGAR]", "avatar": null, "prize": "[PREMIO]" },
-        { "place": 2, "name": "[GANADOR 2.º LUGAR]", "avatar": null, "prize": null },
-        { "place": 3, "name": "[GANADOR 3.º LUGAR]", "avatar": null, "prize": null }
+      "id": "ICH-001",
+      "number": "01",
+      "status": "COMPLETED",
+      "date": "2025-08-29",
+      "placeholder": true,
+      "title": {
+        "es": "PERCY CHALLENGE",
+        "en": "PERCY CHALLENGE"
+      },
+      "description": {
+        "es": "Gana o empata una partida sin usar sillas cohete",
+        "en": "Win or get tie a match without using rocket chairs"
+      },
+      "rules": {
+        "es": [
+          "No sentar a los sobrevivientes en sillas de cohetes",
+          "No usar globos para cargar ni mover a los sobrevivientes a ninguna parte",
+          "No usar al cazador Undead (Percy), ya que el reto consiste en imitar sus habilidades",
+          "No utilizar habilidades de eliminación (Ej. Muerte del Capullo)"
+        ],
+        "en": [
+          "Finish the level start to end with no shortcuts, glitches or mods.",
+          "Every death counts from the moment the run starts.",
+          "Time runs from the first input to the end screen.",
+          "Fewest deaths wins; on a tie, the fastest time wins.",
+          "Submit an uncut video with the counter visible."
+        ]
+      },
+      "criteria": [
+        "time"
       ],
-      "youtube": null, "thumbnail": null
-    },
-    {
-      "id": "T-003", "number": "03", "status": "COMPLETED", "date": null, "placeholder": true,
-      "title": { "es": "LABORATORIO ABANDONADO", "en": "ABANDONED LAB" },
-      "summary": { "es": "Ejemplo · Environment art de una instalación olvidada.", "en": "Sample · Environment art of a forgotten facility." },
-      "description": { "es": "Expediente de ejemplo. Reemplazar con la información real.", "en": "Sample file. Replace with the real information." },
-      "prize": { "es": "[PREMIO DEL CHALLENGE]", "en": "[CHALLENGE PRIZE]" },
-      "participants": null,
-      "winners": [
-        { "place": 1, "name": "[GANADOR 1.º LUGAR]", "avatar": null, "prize": "[PREMIO]" },
-        { "place": 2, "name": "[GANADOR 2.º LUGAR]", "avatar": null, "prize": null },
-        { "place": 3, "name": "[GANADOR 3.º LUGAR]", "avatar": null, "prize": null }
+      "youtube": "https://www.youtube.com/watch?v=IkBNvkPXvgk",
+      "thumbnail": "public/IDV/Challenges/001/thumbnail.webp",
+      "results": [
+        {
+          "name": "Stephh",
+          "avatar": "public/IDV/Characters/Hunters/reina-sangrienta.webp",
+          "scores": {
+            "time": 309000
+          }
+        },
+        {
+          "name": "MARTZIAN",
+          "avatar": "public/IDV/Characters/Hunters/violinista.webp",
+          "scores": {
+            "time": 321000
+          }
+        },
+        {
+          "name": "ZKMR",
+          "avatar": "public/IDV/Characters/Hunters/reptiliano-malvado.webp",
+          "scores": {
+            "time": 433800
+          }
+        }
       ],
-      "youtube": null, "thumbnail": null
-    },
-    {
-      "id": "T-002", "number": "02", "status": "COMPLETED", "date": null, "placeholder": true,
-      "title": { "es": "CICLO IDLE", "en": "IDLE LOOP" },
-      "summary": { "es": "Ejemplo · Animación idle de 5 segundos en loop.", "en": "Sample · A 5-second looping idle animation." },
-      "description": { "es": "Expediente de ejemplo. Reemplazar con la información real.", "en": "Sample file. Replace with the real information." },
-      "prize": { "es": "[PREMIO DEL CHALLENGE]", "en": "[CHALLENGE PRIZE]" },
-      "participants": null,
-      "winners": [
-        { "place": 1, "name": "[GANADOR 1.º LUGAR]", "avatar": null, "prize": "[PREMIO]" },
-        { "place": 2, "name": "[GANADOR 2.º LUGAR]", "avatar": null, "prize": null },
-        { "place": 3, "name": "[GANADOR 3.º LUGAR]", "avatar": null, "prize": null }
-      ],
-      "youtube": null, "thumbnail": null
-    },
-    {
-      "id": "T-001", "number": "01", "status": "COMPLETED", "date": null, "placeholder": true,
-      "title": { "es": "PRIMER CONTACTO", "en": "FIRST CONTACT" },
-      "summary": { "es": "Ejemplo · Primer challenge del canal.", "en": "Sample · The channel’s first challenge." },
-      "description": { "es": "Expediente de ejemplo. Reemplazar con la información real.", "en": "Sample file. Replace with the real information." },
-      "prize": { "es": "[PREMIO DEL CHALLENGE]", "en": "[CHALLENGE PRIZE]" },
-      "participants": null,
-      "winners": [
-        { "place": 1, "name": "[GANADOR 1.º LUGAR]", "avatar": null, "prize": "[PREMIO]" },
-        { "place": 2, "name": "[GANADOR 2.º LUGAR]", "avatar": null, "prize": null },
-        { "place": 3, "name": "[GANADOR 3.º LUGAR]", "avatar": null, "prize": null }
-      ],
-      "youtube": null, "thumbnail": null
+      "winnersImage": "public/IDV/Challenges/001/winners.webp"
     }
   ]
 }
