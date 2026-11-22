@@ -63,6 +63,23 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
       <a href={site.youtube} class="btn btn--ghost" target="_blank" rel="me noopener" data-cursor="YOUTUBE">
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="#FF3737" stroke-width="1.6"><path d="M6 4 L14 9 L6 14 Z"></path></svg>{t.watch}</a>
     </div>
+
+    <!-- Móvil: el panel de estado baja debajo del texto, con Asteria como tarjeta propia -->
+    <div class="hero__status boot" style="--i:5">
+      <div class="status__grid">
+        {hud.filter((row) => row[2] !== 'asteria').map(([k, v], i, rows) => (
+          <div class="status__cell"><span>{k}</span><b class:list={{ hot: i === rows.length - 1 }}>{v}</b></div>
+        ))}
+      </div>
+      {hud.filter((row) => row[2] === 'asteria').map(([k, v]) => (
+        <a class="status__asteria" href={href('es', 'asteria')} data-asteria>
+          <span class="sa__sheen" aria-hidden="true"></span>
+          <svg class="sa__star" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 9.2 13.5, 6.5 10.8, 0 10 C 6.5 9.2, 9.2 6.5, 10 0 Z" /></svg>
+          <span class="sa__k">{k}</span>
+          <span class="sa__v"><i aria-hidden="true">♡</i> {v} <i aria-hidden="true">♡</i></span>
+        </a>
+      ))}
+    </div>
   </div>
 
   <div class="hero__hud" aria-hidden="true">
@@ -249,9 +266,41 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
   .hero__strip-line { display: inline-block; width: 1px; height: 22px; background: var(--red); animation: drip 2s ease-in-out infinite; transform-origin: top; }
   @keyframes drip { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
 
+  /* Panel de estado móvil (en escritorio manda el HUD de la derecha) */
+  .hero__status { display: none; }
+
+  /* Asteria: una tarjeta que brilla sola (en el teléfono no hay hover) */
+  .status__asteria {
+    position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 18px; border-radius: 12px;
+    background: radial-gradient(ellipse 80% 140% at 12% 50%, rgba(255, 240, 214, 0.14), rgba(255, 190, 215, 0.05) 55%, rgba(10, 11, 12, 0.92) 85%);
+    border: 1px solid rgba(233, 207, 148, 0.4);
+    box-shadow: 0 0 24px rgba(255, 225, 190, 0.08), inset 0 0 18px rgba(255, 240, 214, 0.06);
+    font-family: var(--f-mono); color: #fff; -webkit-tap-highlight-color: transparent;
+    transition: scale 0.2s, box-shadow 0.3s;
+    animation: sa-glow 4s ease-in-out infinite;
+  }
+  .status__asteria:active { scale: 0.98; box-shadow: 0 0 34px rgba(255, 225, 190, 0.3); }
+  .sa__star { width: 16px; height: 16px; flex: none; fill: #f1d9a4; filter: drop-shadow(0 0 6px rgba(255, 236, 200, 0.9)); animation: asteria-twinkle 2.6s ease-in-out infinite; }
+  .sa__k { font-size: 12px; letter-spacing: 0.3em; color: #fff; text-shadow: 0 0 10px rgba(255, 240, 220, 0.7); }
+  .sa__v { margin-left: auto; font-size: 10px; letter-spacing: 0.14em; color: #f4c6d4; white-space: nowrap; }
+  .sa__v i { font-style: normal; color: #ff8fb1; display: inline-block; animation: asteria-beat 2.4s ease-in-out infinite; }
+  .sa__v i:last-child { animation-delay: -1.2s; }
+  .sa__sheen {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(100deg, transparent 35%, rgba(255, 246, 228, 0.22) 50%, transparent 65%);
+    transform: translateX(-110%); animation: sa-sheen 4.5s 1.5s ease-in-out infinite;
+  }
+  @keyframes sa-sheen { 0%, 55% { transform: translateX(-110%); } 100% { transform: translateX(110%); } }
+  @keyframes sa-glow { 0%, 100% { border-color: rgba(233, 207, 148, 0.35); } 50% { border-color: rgba(255, 236, 205, 0.7); } }
+
   @media (max-width: 1180px) {
     .hero__hud { display: none; }
     .hero__figure { left: 66%; }
+  }
+  /* tablet horizontal: el HUD taparía al personaje; Asteria baja como tarjeta bajo los botones */
+  @media (min-width: 961px) and (max-width: 1180px) {
+    .hero__status { display: block; margin-top: 22px; max-width: 380px; }
+    .status__grid { display: none; }
   }
   /* Móvil: composición vertical propia, no la de escritorio comprimida */
   @media (max-width: 960px) {
@@ -262,9 +311,28 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
       -webkit-mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%);
       mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%);
     }
-    .hero__rail, .hero__gauge, .hide-sm { display: none; }
-    .hero__ghost { top: 34%; }
-    .hero__copy { position: relative; left: auto; top: auto; transform: none; padding: 18svh var(--gutter) 0; max-width: 560px; }
+    .hero__rail, .hero__gauge, .hide-sm, .hero__hud { display: none; }
+    /* el MARTZIAN gigante de fondo tapaba al personaje: en móvil se va */
+    .hero__ghost { display: none; }
+    /* el personaje se desvanece antes de que empiece el texto: nada lo tapa */
+    .hero__sway {
+      -webkit-mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%), linear-gradient(180deg, #000 50%, transparent 76%);
+      -webkit-mask-composite: source-in;
+      mask-image: radial-gradient(ellipse 30% 62% at 52% 38%, #000 55%, transparent 100%), linear-gradient(180deg, #000 50%, transparent 76%);
+      mask-composite: intersect;
+    }
+    .hero__copy { position: relative; left: auto; top: auto; transform: none; padding: calc(64px + min(100vw, 520px)) var(--gutter) 0; max-width: 560px; margin-inline: auto; }
+
+    /* ---------- Panel de estado móvil ---------- */
+    .hero__status { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+    .status__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
+    .status__cell { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: rgba(10, 11, 12, 0.92); font-family: var(--f-mono); }
+    .status__cell span { font-size: 9px; letter-spacing: 0.16em; color: var(--steel); }
+    .status__cell b { font-weight: 400; font-size: 11px; letter-spacing: 0.1em; color: var(--white); }
+    .status__cell b.hot { color: var(--red); }
+
+    .hero__kicker { font-size: 10px; letter-spacing: 0.16em; gap: 10px; white-space: nowrap; }
+    .hero__kicker span { width: 20px; flex: none; }
     .hero__title { margin-top: 12px; font-size: clamp(64px, 20vw, 96px); }
     .hero__tag { margin-top: 12px; font-size: 19px; letter-spacing: 0.14em; }
     .hero__desc { margin-top: 16px; font-size: 15px; }
@@ -285,7 +353,7 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
 
     // Asteria: lo oscuro se vuelve su contrario. El rojo se dora, la luz florece desde el clic,
     // se abren órbitas doradas y suben estrellas hasta que todo queda en blanco (allá amanece).
-    hero.querySelector<HTMLAnchorElement>('[data-asteria]')?.addEventListener('click', (e) => {
+    hero.querySelectorAll<HTMLAnchorElement>('[data-asteria]').forEach((a) => a.addEventListener('click', (e) => {
       if (reduced || e.metaKey || e.ctrlKey || e.shiftKey) return;
       e.preventDefault();
       const link = e.currentTarget as HTMLAnchorElement;
@@ -322,7 +390,7 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
       };
       sprinkle();
       setTimeout(() => { location.href = link.href; }, 2350);
-    });
+    }));
 
     const figure = hero.querySelector<HTMLElement>('[data-figure]');
     const light = hero.querySelector<HTMLElement>('[data-light]');

@@ -107,7 +107,7 @@ p { margin: 0; }
   50% { box-shadow: 0 0 0 6px rgba(255, 55, 55, 0), 0 0 22px rgba(255, 55, 55, 0.55); }
 }
 @keyframes mz-fx-sweep { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
-@media (max-width: 480px) { .fx-btn__verb { display: none; } }
+@media (max-width: 480px), (min-width: 961px) and (max-width: 1280px) { .fx-btn__verb { display: none; } }
 
 .chip {
   min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; gap: 10px; border-radius: 999px;
