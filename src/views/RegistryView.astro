@@ -10,7 +10,7 @@ const { lang } = Astro.props;
 const t = ui[lang].registry;
 const specLabel = (id: string) => specialties.find((s) => s.id === id)?.label[lang] ?? id;
 ---
-<Base lang={lang} slug="registry" title={t.title} description={t.description} crumbName="Artist Registry" showChamberStatus="04">
+<Base lang={lang} slug="registry" title={t.title} description={t.description} crumbName="Artist Registry">
   <ChamberHead lang={lang} crumb={t.crumb} glow="radial-gradient(ellipse 40% 100% at 10% 0%, #22080b, transparent 70%)">
     <h1 slot="title">ARTIST<br />REGISTRY</h1>
     <p slot="lede" class="chamber-head__lede">{t.lede}</p>

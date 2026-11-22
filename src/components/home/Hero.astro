@@ -2,7 +2,8 @@
 import { site, type Lang } from '../../data/site';
 import { openModules, sealedModules } from '../../data/modules';
 import { ui } from '../../i18n/ui';
-import { asset } from '../../i18n/paths';
+import { asset, href } from '../../i18n/paths';
+import challengesData from '../../data/challenges.json';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -13,6 +14,14 @@ const bars = Array.from({ length: 26 }, (_, i) => ({
   hot: i === 17,
 }));
 const model = site.characterModel ? asset(site.characterModel) : '';
+// Datos reales del sitio para el panel de la derecha
+const pad = (n: number) => String(n).padStart(2, '0');
+const stats: Record<string, string> = {
+  done: pad(challengesData.challenges.filter((c) => c.status === 'COMPLETED').length),
+  open: pad(openModules.length),
+  total: pad(openModules.length + sealedModules.length),
+};
+const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: string) => stats[key] ?? ''), kind]);
 ---
 <section class="hero" data-hero aria-labelledby="hero-title">
   <div class="hero__glow" aria-hidden="true"></div>
@@ -46,7 +55,7 @@ const model = site.characterModel ? asset(site.characterModel) : '';
   <div class="hero__copy">
     <p class="hero__kicker boot" style="--i:0"><span></span>{t.kicker}</p>
     <h1 id="hero-title" class="hero__title boot" style="--i:1">MARTZIAN</h1>
-    <p class="hero__tag boot" style="--i:2">THE SYSTEM IS <span>STILL ALIVE.</span></p>
+    <p class="hero__tag boot" style="--i:2">{t.tagA} <span>{t.tagB}</span></p>
     <p class="hero__desc boot" style="--i:3">{t.desc}</p>
     <div class="hero__ctas boot" style="--i:4">
       <a href="#facility" class="btn btn--solid" data-cursor="DESCEND">{t.explore}
@@ -57,8 +66,13 @@ const model = site.characterModel ? asset(site.characterModel) : '';
   </div>
 
   <div class="hero__hud" aria-hidden="true">
-    {t.hud.map(([k, v], i) => (
-      <div class:list={['hud-row', { 'hud-row--first': i === 0 }]}><span>{k}</span><span class:list={{ hot: i === t.hud.length - 1 }}>{v}</span></div>
+    {hud.map(([k, v, kind], i) => kind === 'asteria' ? (
+      <a class="hud-row hud-row--asteria" href={href('es', 'asteria')} tabindex="-1" data-asteria data-cursor="♡">
+        <span class="asteria__k"><span class="asteria__glint"></span>{k}</span>
+        <span class="asteria__v"><i>♡</i> {v} <i>♡</i></span>
+      </a>
+    ) : (
+      <div class:list={['hud-row', { 'hud-row--first': i === 0 }]}><span>{k}</span><span class:list={{ hot: i === hud.length - 1 }}>{v}</span></div>
     ))}
     <div class="hud-bars">{bars.map((b) => <span style={`height:${b.h}%`} class:list={{ hot: b.hot }}></span>)}</div>
     <div class="hud-trace">{t.trace}</div>
@@ -162,6 +176,62 @@ const model = site.characterModel ? asset(site.characterModel) : '';
   .hud-row span:last-child { color: var(--white); text-align: right; }
   .hud-row span.hot { color: var(--red); }
   .hud-row--first { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+
+  /* Asteria: una fila que esconde algo celestial */
+  .hud-row--asteria { position: relative; margin: -6px -10px; padding: 6px 10px; border-radius: 4px; color: var(--steel); cursor: pointer; transition: color 0.5s, background 0.6s, box-shadow 0.6s; }
+  .hud-row--asteria .asteria__k { position: relative; transition: color 0.5s, text-shadow 0.5s, letter-spacing 0.6s; }
+  .hud-row span.asteria__v { color: #f4c6d4; transition: color 0.5s, text-shadow 0.5s; }
+  .asteria__v i { font-style: normal; color: #ff8fb1; display: inline-block; animation: asteria-beat 2.4s ease-in-out infinite; }
+  .asteria__v i:last-child { animation-delay: -1.2s; }
+  .asteria__glint {
+    position: absolute; left: -14px; top: 50%; width: 22px; height: 22px; translate: -50% -50%; pointer-events: none;
+    background:
+      linear-gradient(0deg, transparent 46%, #fff 50%, transparent 54%),
+      linear-gradient(90deg, transparent 46%, #fff 50%, transparent 54%),
+      radial-gradient(circle, #fff 0 10%, rgba(255, 236, 200, 0.6) 22%, transparent 60%);
+    filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 14px #ffd9a8);
+    opacity: 0; scale: 0.2; rotate: -45deg; transition: opacity 0.35s, scale 0.6s cubic-bezier(.2, 1.6, .4, 1), rotate 0.9s;
+  }
+  .hud-row--asteria:hover, .hud-row--asteria:focus-visible {
+    background: radial-gradient(ellipse at 20% 50%, rgba(255, 244, 228, 0.16), rgba(255, 190, 215, 0.06) 60%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(255, 236, 214, 0.25), 0 0 26px rgba(255, 225, 200, 0.18);
+  }
+  .hud-row--asteria:hover .asteria__k, .hud-row--asteria:focus-visible .asteria__k { color: #fff; letter-spacing: 0.3em; text-shadow: 0 0 10px #fff, 0 0 22px #ffd9a8; }
+  .hud-row--asteria:hover .asteria__v, .hud-row--asteria:focus-visible .asteria__v { color: #fff; text-shadow: 0 0 10px #ffb3cb; }
+  .hud-row--asteria:hover .asteria__glint, .hud-row--asteria:focus-visible .asteria__glint { opacity: 1; scale: 1; rotate: 45deg; animation: asteria-twinkle 1.4s 0.6s ease-in-out infinite; }
+  @keyframes asteria-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } }
+  @keyframes asteria-twinkle { 0%, 100% { scale: 1; opacity: 1; } 50% { scale: 0.7; opacity: 0.7; } }
+  /* ---------- Cruce hacia Asteria: lo oscuro se vuelve luz ---------- */
+  /* la página se dora, se aclara y se desenfoca como si la cegara la luz */
+  :global(body.mz-ascending > :not(.ascend-fx)) { transition: filter 2s cubic-bezier(.5, 0, .2, 1); }
+  :global(body.mz-ascending--lit > :not(.ascend-fx)) { filter: hue-rotate(42deg) saturate(0.55) brightness(2.1) contrast(0.7) blur(2px); }
+  :global(body.mz-ascending) { cursor: progress; }
+  :global(.ascend-fx) { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
+  /* resplandor dorado que crece desde el clic */
+  :global(.ascend__glow) {
+    position: absolute; left: var(--x); top: var(--y); width: 60px; height: 60px; translate: -50% -50%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 248, 230, 0.95) 0%, rgba(240, 220, 170, 0.5) 40%, rgba(240, 220, 170, 0) 70%);
+    scale: 0; transition: scale 2.2s cubic-bezier(.6, 0, .2, 1);
+  }
+  :global(.ascend-fx.is-on .ascend__glow) { scale: 70; }
+  /* órbitas que se abren, como las de Asteria */
+  :global(.ascend__ring) {
+    position: absolute; left: var(--x); top: var(--y); width: 140px; height: 80px; translate: -50% -50%; border-radius: 50%;
+    border: 1px solid rgba(233, 207, 148, 0.85); box-shadow: 0 0 12px rgba(255, 236, 200, 0.5); opacity: 0;
+  }
+  :global(.ascend-fx.is-on .ascend__ring) { animation: ascend-ring 1.8s cubic-bezier(.2, .6, .3, 1) forwards; }
+  :global(.ascend-fx.is-on .ascend__ring:nth-of-type(2)) { animation-delay: 0.3s; border-color: rgba(200, 210, 235, 0.8); }
+  :global(.ascend-fx.is-on .ascend__ring:nth-of-type(3)) { animation-delay: 0.6s; border-style: dashed; }
+  /* la luz blanca termina de cubrirlo todo */
+  :global(.ascend__bloom) {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at var(--x) var(--y), #fff 0%, #fffdf7 40%, #f7f3e8 100%);
+    clip-path: circle(0 at var(--x) var(--y)); transition: clip-path 1.7s cubic-bezier(.7, 0, .25, 1) 0.55s;
+  }
+  :global(.ascend-fx.is-on .ascend__bloom) { clip-path: circle(150vmax at var(--x) var(--y)); }
+  :global(.ascend__star) { position: absolute; z-index: 2; translate: -50% -50%; filter: drop-shadow(0 0 6px rgba(255, 236, 200, 0.9)); animation: ascend-star 1.6s ease-out forwards; }
+  @keyframes ascend-ring { 0% { opacity: 0; scale: 0.2; } 20% { opacity: 1; } 100% { opacity: 0; scale: 9; } }
+  @keyframes ascend-star { 0% { opacity: 0; transform: translateY(0) scale(0.3) rotate(0deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34vh) scale(1) rotate(90deg); } }
   .hud-bars { margin-top: 6px; height: 34px; display: flex; align-items: flex-end; gap: 3px; }
   .hud-bars span { flex: 1; background: rgba(113, 128, 140, 0.55); transform-origin: bottom; animation: bar 2.4s ease-in-out infinite alternate; }
   .hud-bars span:nth-child(3n) { animation-delay: -0.8s; } .hud-bars span:nth-child(4n+1) { animation-delay: -1.6s; }
@@ -212,6 +282,47 @@ const model = site.characterModel ? asset(site.characterModel) : '';
   if (hero) {
     const reduced = reducedMotion();
     const fine = matchMedia('(pointer: fine)').matches;
+
+    // Asteria: lo oscuro se vuelve su contrario. El rojo se dora, la luz florece desde el clic,
+    // se abren órbitas doradas y suben estrellas hasta que todo queda en blanco (allá amanece).
+    hero.querySelector<HTMLAnchorElement>('[data-asteria]')?.addEventListener('click', (e) => {
+      if (reduced || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      const link = e.currentTarget as HTMLAnchorElement;
+      if (document.body.classList.contains('mz-ascending')) return;
+      const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 9.2 13.5, 6.5 10.8, 0 10 C 6.5 9.2, 9.2 6.5, 10 0 Z';
+      const fx = document.createElement('div');
+      fx.className = 'ascend-fx';
+      fx.style.setProperty('--x', `${e.clientX}px`);
+      fx.style.setProperty('--y', `${e.clientY}px`);
+      fx.innerHTML = '<div class="ascend__glow"></div><span class="ascend__ring"></span><span class="ascend__ring"></span><span class="ascend__ring"></span><div class="ascend__bloom"></div>';
+      document.body.appendChild(fx);
+      document.body.classList.add('mz-ascending');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.body.classList.add('mz-ascending--lit');
+        fx.classList.add('is-on');
+      }));
+
+      // estrellas que suben, cada vez más
+      const t0 = performance.now();
+      const sprinkle = () => {
+        const t = (performance.now() - t0) / 2000;
+        if (t > 1) return;
+        for (let i = 0; i < 1 + Math.floor(t * 4); i++) {
+          const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          s.setAttribute('viewBox', '0 0 20 20');
+          s.setAttribute('class', 'ascend__star');
+          s.innerHTML = `<path d="${STAR}" fill="${Math.random() < 0.75 ? '#e9cf94' : '#ffffff'}"/>`;
+          const sz = 6 + Math.random() * 14;
+          s.style.cssText = `left:${Math.random() * 100}%;top:${60 + Math.random() * 45}%;width:${sz}px;height:${sz}px;animation-duration:${1.4 + Math.random()}s`;
+          fx.appendChild(s);
+          s.addEventListener('animationend', () => s.remove(), { once: true });
+        }
+        setTimeout(sprinkle, 70);
+      };
+      sprinkle();
+      setTimeout(() => { location.href = link.href; }, 2350);
+    });
 
     const figure = hero.querySelector<HTMLElement>('[data-figure]');
     const light = hero.querySelector<HTMLElement>('[data-light]');

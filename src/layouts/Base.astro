@@ -14,11 +14,10 @@ interface Props {
   noindex?: boolean;
   jsonLd?: Record<string, unknown>[];
   crumbName?: string; // nombre de la página para BreadcrumbList
-  showChamberStatus?: string; // p.ej. "02"
   immersive?: boolean; // página a pantalla completa: sin footer (p.ej. el portafolio)
 }
 
-const { lang, slug, title, description, overlayHeader = false, noindex = false, jsonLd = [], crumbName, showChamberStatus, immersive = false } = Astro.props;
+const { lang, slug, title, description, overlayHeader = false, noindex = false, jsonLd = [], crumbName, immersive = false } = Astro.props;
 const t = ui[lang];
 const other: Lang = lang === 'es' ? 'en' : 'es';
 const canonical = absolute(Astro.site, href(lang, slug));
@@ -37,7 +36,7 @@ const graph: Record<string, unknown>[] = [
   {
     '@type': 'Person', '@id': siteUrl + '#martzian', name: 'Martzian', url: siteUrl,
     image: absolute(Astro.site, asset('img/martzian-1080.jpg')),
-    description: ui.es.home.description,
+    description: ui[lang].home.description,
     jobTitle: lang === 'es' ? 'Creador de contenido y artista 3D' : 'Content creator and 3D artist',
     sameAs,
   },
@@ -111,17 +110,16 @@ const current = (s: string) => (s === slug ? 'page' : undefined);
       ))}
     </nav>
     <div class="header-tools">
-      <div class="sys-status">
-        <span class="dot dot--pulse" aria-hidden="true"></span>
-        {showChamberStatus ? <>{t.chamber} {showChamberStatus} · <b>{t.online}</b></> : <>{t.status} <b>{t.online}</b></>}
-      </div>
       <div class="pill-group" role="group" aria-label={t.langAria}>
         <a class="pill" href={href('es', slug)} hreflang="es" lang="es" aria-current={lang === 'es' ? 'true' : undefined}>ES</a>
         <a class="pill" href={href('en', slug)} hreflang="en" lang="en" aria-current={lang === 'en' ? 'true' : undefined}>EN</a>
       </div>
-      <div class="pill-group motion-toggle">
-        <button type="button" class="pill" aria-pressed="false" aria-label={t.motionAria} title={t.motionAria} data-motion-toggle>FX</button>
-      </div>
+      <button type="button" class="fx-btn" aria-pressed="false" title={t.motionAria} data-motion-toggle>
+        <span class="fx-btn__dot" aria-hidden="true"></span>
+        <span class="fx-btn__off"><span class="fx-btn__verb">{t.fxEnable} </span>FX</span>
+        <span class="fx-btn__on">FX ON</span>
+        <span class="sr-only">{t.motionAria}</span>
+      </button>
     </div>
   </header>
 

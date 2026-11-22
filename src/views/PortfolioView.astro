@@ -10,7 +10,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = ui[lang].portfolio;
 ---
-<Base lang={lang} slug="portfolio" title={t.title} description={t.description} crumbName="Portfolio" showChamberStatus="03" immersive>
+<Base lang={lang} slug="portfolio" title={t.title} description={t.description} crumbName="Portfolio" immersive>
   <section class="pf" data-viewer data-state="loading" aria-labelledby="pf-title">
     <!-- Texto para buscadores y lectores de pantalla -->
     <h1 id="pf-title" class="sr-only">{t.h1} — Martzian Portfolio</h1>
@@ -23,6 +23,7 @@ const t = ui[lang].portfolio;
       allow="fullscreen; pointer-lock; autoplay; gamepad; xr-spatial-tracking; clipboard-write"
       allowfullscreen
       referrerpolicy="strict-origin-when-cross-origin"
+      onload="this.dataset.loaded='1'"
     ></iframe>
 
     <div class="pf__loading" aria-hidden="true">
@@ -114,12 +115,13 @@ const t = ui[lang].portfolio;
   const frame = viewer?.querySelector<HTMLIFrameElement>('[data-frame]');
   if (viewer && frame) {
     const set = (s: 'embed' | 'gate') => { viewer.dataset.state = s; };
-    let settled = false;
-    // Si en 12 s no cargó (sitio caído o embed bloqueado), se abre la compuerta externa
-    const timer = setTimeout(() => { if (!settled) { settled = true; set('gate'); } }, 12000);
+    let loaded = false;
+    // Si en 12 s no cargó (sitio caído o embed bloqueado), se abre la compuerta externa.
+    // Si el load llega después (conexión lenta), igual se muestra el portafolio.
+    const timer = setTimeout(() => { if (!loaded) set('gate'); }, 12000);
     const onLoad = () => {
-      if (settled) return;
-      settled = true; clearTimeout(timer);
+      if (loaded) return;
+      loaded = true; clearTimeout(timer);
       // Mismo origen (ambos en martzian.github.io): comprobamos que realmente hay contenido
       try {
         const doc = frame.contentDocument;
@@ -129,8 +131,9 @@ const t = ui[lang].portfolio;
       frame.focus(); // el teclado y el mouse van directo al portafolio (controles de cámara)
     };
     frame.addEventListener('load', onLoad);
-    // Por si el load ocurrió antes de que corriera este script
-    try { if (frame.contentDocument?.readyState === 'complete' && frame.contentDocument.location.href !== 'about:blank') onLoad(); } catch { /* otro origen */ }
+    // Por si el load ocurrió antes de que corriera este script: el onload inline del iframe
+    // deja la marca data-loaded (funciona también entre orígenes distintos, p.ej. en localhost)
+    if (frame.dataset.loaded) onLoad();
 
     // Al pasar el mouse sobre el portafolio, el foco va al iframe (para que reciba teclado al instante)
     frame.addEventListener('pointerenter', () => frame.focus());
