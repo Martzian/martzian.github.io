@@ -6,7 +6,7 @@ interface Ctx { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE
 
 export async function startHero3D(canvas: HTMLCanvasElement, hero: HTMLElement) {
   const mobile = matchMedia('(max-width: 960px)').matches;
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !mobile, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !mobile, powerPreference: 'default' }); // 'high-performance' forzaba el cambio a la GPU dedicada al abrir
   renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1 : 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

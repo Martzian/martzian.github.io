@@ -219,36 +219,46 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
   @keyframes asteria-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } }
   @keyframes asteria-twinkle { 0%, 100% { scale: 1; opacity: 1; } 50% { scale: 0.7; opacity: 0.7; } }
   /* ---------- Cruce hacia Asteria: lo oscuro se vuelve luz ---------- */
-  /* la página se dora, se aclara y se desenfoca como si la cegara la luz */
-  :global(body.mz-ascending > :not(.ascend-fx)) { transition: filter 2s cubic-bezier(.5, 0, .2, 1); }
-  :global(body.mz-ascending--lit > :not(.ascend-fx)) { filter: hue-rotate(42deg) saturate(0.55) brightness(2.1) contrast(0.7) blur(2px); }
+  /* Todo son capas encima de la página que sólo cambian opacidad y escala: la GPU las anima
+     sin volver a pintar la página (los filtros sobre toda la página hacían que fuera a tirones). */
   :global(body.mz-ascending) { cursor: progress; }
   :global(.ascend-fx) { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
-  /* resplandor dorado que crece desde el clic */
-  :global(.ascend__glow) {
-    position: absolute; left: var(--x); top: var(--y); width: 60px; height: 60px; translate: -50% -50%; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 248, 230, 0.95) 0%, rgba(240, 220, 170, 0.5) 40%, rgba(240, 220, 170, 0) 70%);
-    scale: 0; transition: scale 2.2s cubic-bezier(.6, 0, .2, 1);
+  /* mientras cruza, el Hero de debajo deja de animarse (nadie lo ve y así no se repinta) */
+  :global(body.mz-ascending .hero *), :global(body.mz-ascending .hero *::before), :global(body.mz-ascending .hero *::after) { animation-play-state: paused !important; }
+  :global(body.mz-ascending .hero__canvas) { visibility: hidden; }
+  /* el rojo se vuelve dorado y se aclara: un velo oro → crema (sin modos de mezcla, que eran lo más caro) */
+  :global(.ascend__wash) {
+    position: absolute; inset: 0; opacity: 0; transition: opacity 1.8s 0.1s ease-in; will-change: opacity;
+    background: radial-gradient(circle at var(--x) var(--y), rgba(255, 246, 228, 0.82) 0%, rgba(233, 200, 140, 0.6) 45%, rgba(201, 160, 95, 0.55) 100%);
   }
-  :global(.ascend-fx.is-on .ascend__glow) { scale: 70; }
+  :global(.ascend-fx.is-on .ascend__wash) { opacity: 1; }
+  /* resplandor dorado y luz blanca: círculos pequeños que se escalan (un degradado escalado no pierde nada) */
+  :global(.ascend__glow), :global(.ascend__bloom) {
+    position: absolute; left: var(--x); top: var(--y); width: 100px; height: 100px; margin: -50px 0 0 -50px; border-radius: 50%;
+    transform: scale(0); will-change: transform;
+  }
+  :global(.ascend__glow) {
+    background: radial-gradient(circle, rgba(255, 248, 230, 0.95) 0%, rgba(240, 220, 170, 0.5) 40%, rgba(240, 220, 170, 0) 70%);
+    transition: transform 2.2s cubic-bezier(.6, 0, .2, 1);
+  }
+  :global(.ascend-fx.is-on .ascend__glow) { transform: scale(42); }
+  :global(.ascend__bloom) {
+    background: radial-gradient(circle, #fff 0%, #fffdf7 45%, #f7f3e8 62%, rgba(247, 243, 232, 0) 71%);
+    transition: transform 1.75s cubic-bezier(.7, 0, .25, 1) 0.55s;
+  }
+  :global(.ascend-fx.is-on .ascend__bloom) { transform: scale(90); }
   /* órbitas que se abren, como las de Asteria */
   :global(.ascend__ring) {
-    position: absolute; left: var(--x); top: var(--y); width: 140px; height: 80px; translate: -50% -50%; border-radius: 50%;
-    border: 1px solid rgba(233, 207, 148, 0.85); box-shadow: 0 0 12px rgba(255, 236, 200, 0.5); opacity: 0;
+    position: absolute; left: var(--x); top: var(--y); width: 140px; height: 80px; margin: -40px 0 0 -70px; border-radius: 50%;
+    border: 1px solid rgba(233, 207, 148, 0.85); opacity: 0; will-change: transform, opacity;
   }
   :global(.ascend-fx.is-on .ascend__ring) { animation: ascend-ring 1.8s cubic-bezier(.2, .6, .3, 1) forwards; }
   :global(.ascend-fx.is-on .ascend__ring:nth-of-type(2)) { animation-delay: 0.3s; border-color: rgba(200, 210, 235, 0.8); }
   :global(.ascend-fx.is-on .ascend__ring:nth-of-type(3)) { animation-delay: 0.6s; border-style: dashed; }
-  /* la luz blanca termina de cubrirlo todo */
-  :global(.ascend__bloom) {
-    position: absolute; inset: 0;
-    background: radial-gradient(circle at var(--x) var(--y), #fff 0%, #fffdf7 40%, #f7f3e8 100%);
-    clip-path: circle(0 at var(--x) var(--y)); transition: clip-path 1.7s cubic-bezier(.7, 0, .25, 1) 0.55s;
-  }
-  :global(.ascend-fx.is-on .ascend__bloom) { clip-path: circle(150vmax at var(--x) var(--y)); }
-  :global(.ascend__star) { position: absolute; z-index: 2; translate: -50% -50%; filter: drop-shadow(0 0 6px rgba(255, 236, 200, 0.9)); animation: ascend-star 1.6s ease-out forwards; }
-  @keyframes ascend-ring { 0% { opacity: 0; scale: 0.2; } 20% { opacity: 1; } 100% { opacity: 0; scale: 9; } }
-  @keyframes ascend-star { 0% { opacity: 0; transform: translateY(0) scale(0.3) rotate(0deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34vh) scale(1) rotate(90deg); } }
+  :global(.ascend__star) { position: absolute; z-index: 2; margin: -8px 0 0 -8px; width: 16px; height: 16px; opacity: 0; will-change: transform, opacity; }
+  :global(.ascend-fx.is-on .ascend__star) { animation: ascend-star var(--dur) var(--delay) ease-out forwards; }
+  @keyframes ascend-ring { 0% { opacity: 0; transform: scale(0.2); } 20% { opacity: 1; } 100% { opacity: 0; transform: scale(9); } }
+  @keyframes ascend-star { 0% { opacity: 0; transform: translateY(0) scale(calc(var(--s) * 0.3)) rotate(0deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34vh) scale(var(--s)) rotate(90deg); } }
   .hud-bars { margin-top: 6px; height: 34px; display: flex; align-items: flex-end; gap: 3px; }
   .hud-bars span { flex: 1; background: rgba(113, 128, 140, 0.55); transform-origin: bottom; animation: bar 2.4s ease-in-out infinite alternate; }
   .hud-bars span:nth-child(3n) { animation-delay: -0.8s; } .hud-bars span:nth-child(4n+1) { animation-delay: -1.6s; }
@@ -363,32 +373,17 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
       fx.className = 'ascend-fx';
       fx.style.setProperty('--x', `${e.clientX}px`);
       fx.style.setProperty('--y', `${e.clientY}px`);
-      fx.innerHTML = '<div class="ascend__glow"></div><span class="ascend__ring"></span><span class="ascend__ring"></span><span class="ascend__ring"></span><div class="ascend__bloom"></div>';
+      // estrellas que suben, cada vez más: se crean todas de una vez con retrasos escalonados
+      // (crear elementos durante la animación también la frenaba)
+      let stars = '';
+      for (let i = 0; i < 40; i++) {
+        const delay = Math.sqrt(i / 40) * 1.6; // se van juntando más hacia el final
+        stars += `<svg class="ascend__star" viewBox="0 0 20 20" style="left:${(Math.random() * 100).toFixed(1)}%;top:${(60 + Math.random() * 45).toFixed(1)}%;--s:${(0.4 + Math.random() * 0.9).toFixed(2)};--dur:${(1.3 + Math.random()).toFixed(2)}s;--delay:${delay.toFixed(2)}s"><path d="${STAR}" fill="${Math.random() < 0.75 ? '#e9cf94' : '#ffffff'}"/></svg>`;
+      }
+      fx.innerHTML = '<div class="ascend__wash"></div><div class="ascend__glow"></div><span class="ascend__ring"></span><span class="ascend__ring"></span><span class="ascend__ring"></span>' + stars + '<div class="ascend__bloom"></div>';
       document.body.appendChild(fx);
       document.body.classList.add('mz-ascending');
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        document.body.classList.add('mz-ascending--lit');
-        fx.classList.add('is-on');
-      }));
-
-      // estrellas que suben, cada vez más
-      const t0 = performance.now();
-      const sprinkle = () => {
-        const t = (performance.now() - t0) / 2000;
-        if (t > 1) return;
-        for (let i = 0; i < 1 + Math.floor(t * 4); i++) {
-          const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          s.setAttribute('viewBox', '0 0 20 20');
-          s.setAttribute('class', 'ascend__star');
-          s.innerHTML = `<path d="${STAR}" fill="${Math.random() < 0.75 ? '#e9cf94' : '#ffffff'}"/>`;
-          const sz = 6 + Math.random() * 14;
-          s.style.cssText = `left:${Math.random() * 100}%;top:${60 + Math.random() * 45}%;width:${sz}px;height:${sz}px;animation-duration:${1.4 + Math.random()}s`;
-          fx.appendChild(s);
-          s.addEventListener('animationend', () => s.remove(), { once: true });
-        }
-        setTimeout(sprinkle, 70);
-      };
-      sprinkle();
+      requestAnimationFrame(() => requestAnimationFrame(() => fx.classList.add('is-on')));
       setTimeout(() => { location.href = link.href; }, 2350);
     }));
 
@@ -541,12 +536,17 @@ const hud = t.hud.map(([k, v, kind]) => [k, v.replace(/\{(\w+)\}/g, (_, key: str
       if (++pokes === 5) { pokes = 0; hero.classList.add('hero--alarm'); document.dispatchEvent(new CustomEvent('martzian:egg')); setTimeout(() => hero.classList.remove('hero--alarm'), 1800); }
     });
 
-    // Escena WebGL diferida: sólo si hay WebGL, no hay reduced-motion ni ahorro de datos
+    // Polvo del fondo, diferido y sin reduced-motion ni ahorro de datos.
+    // Sin modelo: canvas 2D ligero. Con modelo GLB: escena WebGL (three.js sólo se descarga entonces).
     const canvas = hero.querySelector<HTMLCanvasElement>('[data-hero-canvas]');
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-    const hasGL = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
-    if (canvas && hasGL && !reduced && !conn?.saveData) {
-      const go = () => import('../../scripts/hero3d').then((m) => m.startHero3D(canvas, hero)).catch((err) => console.warn('[hero3d]', err));
+    if (canvas && !reduced && !conn?.saveData) {
+      const hasModel = !!canvas.dataset.model;
+      const hasGL = hasModel && (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
+      const go = () => (hasGL
+        ? import('../../scripts/hero3d').then((m) => m.startHero3D(canvas, hero))
+        : import('../../scripts/heroDust').then((m) => m.startHeroDust(canvas, hero))
+      ).catch((err) => console.warn('[hero bg]', err));
       if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 2500 }); else setTimeout(go, 1200);
     }
   }

@@ -86,6 +86,7 @@ const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 
 
     <!-- regreso a la oscuridad: la luz se corrompe -->
     <div class="sky__fall" aria-hidden="true">
+      <div class="fall__tint"></div>
       <div class="fall__dark"></div>
       <div class="fall__scan"></div>
       <i class="tear"></i><i class="tear"></i><i class="tear"></i><i class="tear"></i><i class="tear"></i><i class="tear"></i>
@@ -204,6 +205,11 @@ const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 
       const words = Array.from(layer.querySelectorAll<HTMLElement>('.word__in'));
       words.forEach((w) => { w.dataset.src = w.textContent || ''; });
       sky.classList.add('is-falling');
+      const tint = sky.querySelector<HTMLElement>('.fall__tint')!;
+      const dark = sky.querySelector<HTMLElement>('.fall__dark')!;
+      const scan = sky.querySelector<HTMLElement>('.fall__scan')!;
+      const shaken = [layer, center];
+      let subText = sub.textContent || '';
 
       const DUR = 2100;
       const t0 = performance.now();
@@ -211,7 +217,10 @@ const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 
       const frame = (now: number) => {
         const t = Math.min(1, (now - t0) / DUR);
         const L = t * t * (3 - 2 * t); // arranca suave y se precipita
-        sky.style.setProperty('--L', L.toFixed(3));
+        // sólo opacidades: baratas para la GPU
+        tint.style.opacity = Math.min(1, L * 1.4).toFixed(3);
+        dark.style.opacity = Math.min(1, L * 1.05).toFixed(3);
+        scan.style.opacity = (L * 0.8).toFixed(3);
 
         // ráfagas cada vez más seguidas: rasgaduras, letras corruptas, a veces espejo
         if (now - lastBurst > 260 - L * 200) {
@@ -219,19 +228,22 @@ const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 
           const p = 0.08 + L * 0.6;
           name.textContent = corrupt(nameSrc, p * 0.8);
           words.forEach((w) => { w.textContent = corrupt(w.dataset.src || '', p); });
-          sub.textContent = corrupt(L > 0.35 ? subDark : sub.textContent || '', p * 0.7);
+          if (L > 0.35) subText = subDark;
+          sub.textContent = corrupt(subText, p * 0.7);
+          const H = innerHeight;
           tears.forEach((tr) => {
             const on = Math.random() < 0.3 + L * 0.6;
             tr.style.opacity = on ? '1' : '0';
-            tr.style.top = `${rand(0, 100)}%`;
-            tr.style.height = `${rand(2, 6 + L * 40)}px`;
-            tr.style.translate = `${rand(-40, 40) * (0.3 + L)}px 0`;
+            // posición y grosor con transform (mover top/height obligaba a recalcular el layout)
+            tr.style.transform = `translate(${(rand(-40, 40) * (0.3 + L)).toFixed(1)}px, ${(rand(0, H)).toFixed(0)}px) scaleY(${(rand(0.5, 1.5 + L * 10)).toFixed(2)})`;
           });
-          sky.style.setProperty('--tx', `${rand(-12, 12) * L}px`);
-          sky.classList.add('is-tear');
+          const tx = `translateX(${(rand(-12, 12) * L).toFixed(1)}px)`;
+          shaken.forEach((el) => { el.style.transform = tx; });
+          sky.classList.add('is-split');
           sky.classList.toggle('is-mirror', L > 0.55 && Math.random() < 0.25);
           setTimeout(() => {
-            sky.classList.remove('is-tear', 'is-mirror');
+            sky.classList.remove('is-split', 'is-mirror');
+            shaken.forEach((el) => { el.style.transform = ''; });
             tears.forEach((tr) => { tr.style.opacity = '0'; });
             if (t < 0.85) { name.textContent = nameSrc; words.forEach((w) => { w.textContent = w.dataset.src || ''; }); }
           }, rand(50, 90 + L * 80));
@@ -375,28 +387,23 @@ const STAR = 'M10 0 C 10.8 6.5, 13.5 9.2, 20 10 C 13.5 10.8, 10.8 13.5, 10 20 C 
     .sky.is-lit .sky__curtain { opacity: 0; }
 
     /* ---------- Caída a la oscuridad ---------- */
-    .sky { --L: 0; --tx: 0px; }
+    /* Capas encima que sólo cambian opacidad (el script las ajusta en cada fotograma): la GPU las
+       mezcla sin repintar la página. Filtros y sombras animadas sobre todo hacían que fuera a tirones. */
     .sky__fall { position: absolute; inset: 0; z-index: 9; pointer-events: none; visibility: hidden; }
     .sky.is-falling .sky__fall { visibility: visible; }
     .sky.is-falling { cursor: progress; }
-    /* el oro se vuelve rojo, el contraste se dispara y la luz se apaga */
-    .sky.is-falling > :not(.sky__fall):not(.sky__curtain) {
-      filter: brightness(calc(1 - 0.75 * var(--L))) contrast(calc(1 + 1.4 * var(--L))) saturate(calc(1 + 2.5 * var(--L))) hue-rotate(calc(var(--L) * -45deg));
-    }
-    .sky.is-falling .center__name, .sky.is-falling :global(.word__in) {
-      text-shadow: calc(5px * var(--L)) 0 rgba(255, 30, 60, 0.75), calc(-5px * var(--L)) 0 rgba(0, 220, 255, 0.6), 0 0 30px rgba(255, 255, 255, calc(1 - var(--L)));
-    }
-    .sky.is-tear > :not(.sky__fall):not(.sky__curtain) { transform: translateX(var(--tx)); }
+    .fall__dark, .fall__tint, .fall__scan { position: absolute; inset: 0; opacity: 0; will-change: opacity; }
+    /* el oro se tiñe de rojo sangre */
+    .fall__tint { background: #b3121e; mix-blend-mode: multiply; }
+    /* y la luz se apaga */
+    .fall__dark { background: radial-gradient(ellipse 70% 60% at 50% 48%, rgba(40, 6, 8, 0.55) 0%, #080808 75%); }
+    .fall__scan { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 3px); }
+    /* separación rojo/cian sólo durante las ráfagas (un valor fijo, no uno que cambie cada fotograma) */
+    .sky.is-split .center__name, .sky.is-split :global(.word__in) { text-shadow: 4px 0 rgba(255, 30, 60, 0.75), -4px 0 rgba(0, 220, 255, 0.6); }
+    .sky.is-falling .sky__words, .sky.is-falling .sky__center { will-change: transform; }
     .sky.is-mirror .sky__center { scale: -1 1; }
-    .fall__dark {
-      position: absolute; inset: 0; opacity: calc(var(--L) * 1.05);
-      background: radial-gradient(ellipse 70% 60% at 50% 48%, rgba(40, 6, 8, 0.55) 0%, #080808 75%);
-    }
-    .fall__scan {
-      position: absolute; inset: 0; opacity: calc(var(--L) * 0.8);
-      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 3px);
-    }
-    .tear { position: absolute; left: -5%; right: -5%; height: 4px; opacity: 0; backdrop-filter: invert(1) hue-rotate(180deg) contrast(1.6); background: rgba(255, 40, 60, 0.12); }
+    /* rasgaduras: franjas en modo "diferencia" invierten lo que tienen debajo, sin backdrop-filter */
+    .tear { position: absolute; left: -5%; right: -5%; top: 0; height: 4px; transform-origin: 50% 0; opacity: 0; background: #fff; mix-blend-mode: difference; will-change: transform, opacity; }
     .fall__line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #ff3737; box-shadow: 0 0 18px #ff3737; scale: 0 1; opacity: 0; }
     .sky.is-gone .fall__dark { opacity: 1; background: #080808; }
     .sky.is-gone .fall__line { animation: line-off 0.32s ease-out forwards; }
