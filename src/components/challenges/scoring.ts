@@ -13,6 +13,7 @@ export const PRESETS: Record<string, CriterionDef> = {
   time: { id: 'time', type: 'time', order: 'asc', icon: 'clock', label: { es: 'Tiempo', en: 'Time' } },
   powers: { id: 'powers', type: 'count', order: 'asc', icon: 'bolt', label: { es: 'Poderes usados', en: 'Powers used' }, short: { es: 'Pod.', en: 'Pwr' } },
   points: { id: 'points', type: 'count', order: 'desc', icon: 'star', label: { es: 'Puntos', en: 'Points' }, short: { es: 'Pts', en: 'Pts' } },
+  chairs: { id: 'chairs', type: 'count', order: 'desc', icon: 'chair', label: { es: 'Sillas', en: 'Chairs' }, short: { es: 'Sil.', en: 'Chr' } },
 };
 
 export const DEFAULT_CRITERIA: CriterionInput[] = ['deaths', 'time'];
@@ -49,11 +50,11 @@ export function toNumber(v: number | string | null | undefined, type: CriterionD
 }
 
 const pad = (n: number, l = 2) => String(n).padStart(l, '0');
-/** mm:ss.mmm (h:mm:ss.mmm si pasa de una hora) */
+/** mm:ss (h:mm:ss si pasa de una hora) */
 export function fmtTime(ms: number | null): string {
   if (ms == null) return '—';
   const h = Math.floor(ms / 3600000);
-  const mmss = `${pad(Math.floor(ms / 60000) % 60)}:${pad(Math.floor(ms / 1000) % 60)}.${pad(ms % 1000, 3)}`;
+  const mmss = `${pad(Math.floor(ms / 60000) % 60)}:${pad(Math.floor(ms / 1000) % 60)}`;
   return h ? `${h}:${mmss}` : mmss;
 }
 

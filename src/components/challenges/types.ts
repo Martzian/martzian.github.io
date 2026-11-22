@@ -2,7 +2,7 @@ import type { L10n } from '../../data/site';
 
 export type ChallengeStatus = 'COMPLETED' | 'ACTIVE' | 'UPCOMING';
 
-export type CriterionIcon = 'skull' | 'clock' | 'bolt' | 'star' | 'hash';
+export type CriterionIcon = 'skull' | 'clock' | 'bolt' | 'star' | 'chair' | 'hash';
 
 /** Un criterio de comparación. */
 export interface CriterionDef {
@@ -19,7 +19,7 @@ export interface CriterionDef {
 }
 
 /**
- * Id de un criterio predefinido ("deaths", "time", "powers", "points"), opcionalmente con orden
+ * Id de un criterio predefinido ("deaths", "time", "powers", "points", "chairs"), opcionalmente con orden
  * ("deaths:desc" = gana quien tenga más muertes), o un objeto. Un objeto con id predefinido solo
  * necesita lo que cambia ({ "id": "time", "order": "desc" }); uno propio necesita "label".
  */
@@ -45,6 +45,8 @@ export interface Challenge {
   rules: { es: string[]; en: string[] };
   /** Criterios de comparación en orden de prioridad. Por defecto: ["deaths", "time"]. */
   criteria?: CriterionInput[];
+  /** Cuántos ganadores se muestran en el ranking. Por defecto: 3. */
+  winners?: number;
   results: Result[];
   youtube: string | null;
   thumbnail: string | null;

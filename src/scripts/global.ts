@@ -1,4 +1,18 @@
-const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+import { MOTION_KEY, reducedMotion } from './motion';
+
+const reduced = reducedMotion();
+
+/* ---------- Botón FX: activa las animaciones aunque el sistema pida reducirlas ---------- */
+document.querySelectorAll<HTMLButtonElement>('[data-motion-toggle]').forEach((b) => {
+  const full = document.documentElement.dataset.motion === 'full';
+  b.setAttribute('aria-pressed', String(full));
+  b.addEventListener('click', () => {
+    try {
+      if (full) localStorage.removeItem(MOTION_KEY); else localStorage.setItem(MOTION_KEY, 'full');
+    } catch { /* sin storage: no se puede recordar */ }
+    location.reload();
+  });
+});
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 /* ---------- Cursor personalizado ---------- */

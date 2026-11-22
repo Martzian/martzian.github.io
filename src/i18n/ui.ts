@@ -5,6 +5,7 @@ const es = {
     homeAria: 'Martzian, inicio',
     navAria: 'Módulos de la instalación',
     langAria: 'Idioma',
+    motionAria: 'Activar animaciones completas',
     crumbAria: 'Ruta',
     skip: 'Saltar al contenido',
     status: 'ESTADO DEL SISTEMA:',
@@ -23,7 +24,7 @@ const es = {
 
     // HOME
     home: {
-        title: 'Martzian — Sitio oficial · Enter the Unknown',
+        title: 'Martzian - Inicio',
         description: 'Sitio oficial de Martzian: el personaje biomecánico de cabeza vendada y boca cosida, creador de contenido en YouTube. Challenges, Hall of Fame, portafolio 3D y registro de artistas.',
         alt: 'Martzian: figura humanoide sin piernas, cabeza vendada y boca cosida, suspendida por tubos biomecánicos',
         gauge: 'SUBNIVEL −07 · ALA DE CONTENCIÓN B',
@@ -58,10 +59,10 @@ const es = {
     },
 
     challenges: {
-        title: 'IDV Challenges de Martzian — Archivo de pruebas y Hall of Fame',
+        title: 'Martzian - IDV Challenges',
         description: 'Archivo de los challenges de Martzian: expedientes de cada prueba, participantes, ganadores, premios y el Hall of Fame de la comunidad.',
         crumb: '02 — ARCHIVO DE PRUEBAS',
-        lede: 'Cada prueba que ha corrido el sistema. Elige un challenge para ver a sus ganadores y por qué ganaron.',
+        lede: 'Elige un challenge para ver a sus ganadores y por qué ganaron.',
         sample: 'DATOS DE EJEMPLO · NINGÚN RESULTADO ES REAL',
         archiveK: 'ARCHIVO',
         files: 'CHALLENGES',
@@ -76,13 +77,16 @@ const es = {
         participants: 'PARTICIPANTES',
         colName: 'NOMBRE',
         // Criterios de comparación: las frases se arman con la etiqueta de cada criterio
-        best: { count: { asc: (l: string) => `MENOS ${l}`, desc: (l: string) => `MÁS ${l}` }, time: { asc: 'MENOR TIEMPO', desc: 'MAYOR TIEMPO' } },
+        best: {
+            count: {asc: (l: string) => `MENOS ${l}`, desc: (l: string) => `MÁS ${l}`},
+            time: {asc: 'MENOR TIEMPO', desc: 'MAYOR TIEMPO'}
+        },
         tiebreak: '(DESEMPATE)',
         winsBy: (best: string) => `GANA POR ${best}`,
         tiedOn: (labels: string) => `EMPATE EN ${labels}`,
         and: ' Y ',
         fullTie: 'EMPATE TOTAL',
-        gap: { asc: (v: string) => `+${v} SOBRE EL ANTERIOR`, desc: (v: string) => `${v} DETRÁS DEL ANTERIOR` },
+        gap: {asc: (v: string) => `+${v} SOBRE EL ANTERIOR`, desc: (v: string) => `${v} DETRÁS DEL ANTERIOR`},
         cta: {COMPLETED: 'VER GANADORES →', ACTIVE: 'EN CURSO →', UPCOMING: 'PRÓXIMAMENTE →'},
         img: {COMPLETED: '[IMAGEN DE LOS GANADORES]', ACTIVE: '[IMAGEN DEL CHALLENGE]', UPCOMING: '[PRÓXIMAMENTE]'},
         pending: {
@@ -103,7 +107,7 @@ const es = {
     },
 
     portfolio: {
-        title: 'Portafolio de Martzian — Modelado 3D y desarrollo',
+        title: 'Martzian - Portafolio',
         description: 'Portafolio del creador detrás de Martzian: modelado 3D, personajes, desarrollo y trabajo profesional.',
         crumb: '03 — BASE DEL CREADOR',
         h1: 'ARTEFACTOS',
@@ -129,7 +133,7 @@ const es = {
     },
 
     registry: {
-        title: 'Artist Registry de Martzian — Registro de artistas y colaboradores',
+        title: 'Martzian - Registro de artistas',
         description: 'Regístrate en la red de artistas de Martzian: modelado 3D, animación, concept art, VFX, desarrollo de videojuegos y más.',
         crumb: '04 — INGRESO Y DIRECTORIO',
         lede: 'Una red privada de artistas y colaboradores. Registra tu perfil, tu especialidad y tu portafolio para futuras colaboraciones con Martzian.',
@@ -200,12 +204,13 @@ const es = {
     },
 
     notFound: {
-        title: 'Sector no encontrado — Martzian',
+        title: 'Martzian - No encontrado',
         description: 'Esta cámara no existe o fue sellada.',
-        k: 'ERROR 404 · SEÑAL PERDIDA',
-        h: 'ESTA CÁMARA NO EXISTE',
-        p: 'Lo que buscabas fue sellado, movido o nunca estuvo aquí. El sujeto sigue conectado; vuelve al núcleo.',
-        back: 'VOLVER AL NÚCLEO',
+        k: 'ERROR 404 · ACCESO NO AUTORIZADO',
+        h: 'TÚ NO PUEDES ESTAR AQUÍ',
+        back: 'REGRESAR',
+        exit: 'SALIDA DE EMERGENCIA',
+        scream: 'NO DEBISTE ENTRAR AQUÍ',
     },
 };
 
@@ -213,7 +218,7 @@ type Dict = typeof es;
 
 const en: Dict = {
     locale: 'en_US',
-    homeAria: 'Martzian, home', navAria: 'Facility modules', langAria: 'Language', crumbAria: 'Breadcrumb',
+    homeAria: 'Martzian, home', navAria: 'Facility modules', langAria: 'Language', motionAria: 'Enable full animations', crumbAria: 'Breadcrumb',
     skip: 'Skip to content',
     status: 'SYSTEM STATUS:', online: 'ONLINE', chamber: 'CHAMBER', facility: 'FACILITY',
     mapAria: 'Facility map', mapTitle: 'FACILITY MAP', sealedSectors: 'SEALED SECTORS', close: 'Close',
@@ -273,13 +278,16 @@ const en: Dict = {
         ranking: 'WINNERS RANKING',
         participants: 'PARTICIPANTS',
         colName: 'NAME',
-        best: { count: { asc: (l: string) => `FEWEST ${l}`, desc: (l: string) => `MOST ${l}` }, time: { asc: 'FASTEST TIME', desc: 'LONGEST TIME' } },
+        best: {
+            count: {asc: (l: string) => `FEWEST ${l}`, desc: (l: string) => `MOST ${l}`},
+            time: {asc: 'FASTEST TIME', desc: 'LONGEST TIME'}
+        },
         tiebreak: '(TIEBREAK)',
         winsBy: (best: string) => `WINS ON ${best}`,
         tiedOn: (labels: string) => `TIED ON ${labels}`,
         and: ' & ',
         fullTie: 'FULL TIE',
-        gap: { asc: (v: string) => `+${v} OVER THE PREVIOUS`, desc: (v: string) => `${v} BEHIND THE PREVIOUS` },
+        gap: {asc: (v: string) => `+${v} OVER THE PREVIOUS`, desc: (v: string) => `${v} BEHIND THE PREVIOUS`},
         cta: {COMPLETED: 'SEE WINNERS →', ACTIVE: 'IN PROGRESS →', UPCOMING: 'COMING SOON →'},
         img: {COMPLETED: '[WINNERS IMAGE]', ACTIVE: '[CHALLENGE IMAGE]', UPCOMING: '[COMING SOON]'},
         pending: {
@@ -399,10 +407,11 @@ const en: Dict = {
     notFound: {
         title: 'Sector not found — Martzian',
         description: 'This chamber does not exist or was sealed.',
-        k: 'ERROR 404 · SIGNAL LOST',
-        h: 'THIS CHAMBER DOES NOT EXIST',
-        p: 'Whatever you were looking for was sealed, moved, or never here. The subject is still connected; head back to the core.',
-        back: 'BACK TO THE CORE',
+        k: 'ERROR 404 · UNAUTHORIZED ACCESS',
+        h: 'YOU CAN’T BE HERE',
+        back: 'GO BACK',
+        exit: 'EMERGENCY EXIT',
+        scream: 'YOU SHOULD NOT HAVE COME HERE',
     },
 };
 

@@ -1,6 +1,212 @@
 {
-  "_comment": "Archivo de challenges. status: COMPLETED | ACTIVE | UPCOMING. date: AAAA-MM-DD o null. youtube: ID del video o null. thumbnail / winnersImage: ruta dentro de public/ o null. placeholder: true muestra el aviso de contenido de ejemplo. rules: { es: [...], en: [...] } — una regla por línea (listas vacías ocultan la sección). criteria: criterios de comparación EN ORDEN DE PRIORIDAD; el primero decide y los siguientes desempatan. Predefinidos: \"deaths\" (menos muertes), \"time\" (menor tiempo), \"powers\" (menos poderes usados), \"points\" (más puntos). Cada uno trae un orden por defecto (muertes, tiempo y poderes: gana el MENOR; puntos: gana el MAYOR); para invertirlo añade :asc (gana el menor) o :desc (gana el mayor). Ejemplos: [\"deaths\", \"time\"] · [\"time\"] · [\"powers\", \"time\"] · [\"deaths:desc\"] (más muertes gana) · [\"deaths\", \"time:desc\"] (menos muertes; desempata el MAYOR tiempo). Criterio propio: { \"id\": \"saves\", \"type\": \"count\" | \"time\", \"order\": \"asc\" (gana el menor) | \"desc\" (gana el mayor), \"icon\": \"skull\" | \"clock\" | \"bolt\" | \"star\" | \"hash\", \"label\": { \"es\": \"Rescates\", \"en\": \"Rescues\" }, \"short\": { \"es\": \"Resc.\", \"en\": \"Resc.\" } }. Si no pones criteria se usa [\"deaths\", \"time\"]. results: participantes { name, avatar, scores } — scores lleva un valor por cada id de criteria; el tiempo puede ir en milisegundos (873483) o como texto \"14:33.483\". En challenges ACTIVOS/PRÓXIMOS deja scores vacío {}. El ranking se calcula solo.",
+  "_comment": "Archivo de challenges. status: COMPLETED | ACTIVE | UPCOMING. date: AAAA-MM-DD o null. youtube: enlace o ID del video, o null. thumbnail / winnersImage / avatar: ruta dentro de public/ (con o sin \"public/\" delante) o URL completa, o null. placeholder: true muestra el aviso de contenido de ejemplo. rules: { es: [...], en: [...] } — una regla por línea (listas vacías ocultan la sección). criteria: criterios de comparación EN ORDEN DE PRIORIDAD; el primero decide y los siguientes desempatan. Predefinidos: \"deaths\" (menos muertes), \"time\" (menor tiempo), \"powers\" (menos poderes usados), \"points\" (más puntos), \"chairs\" (más sillas). Cada uno trae un orden por defecto (muertes, tiempo y poderes: gana el MENOR; puntos y sillas: gana el MAYOR); para invertirlo añade :asc (gana el menor) o :desc (gana el mayor). Ejemplos: [\"deaths\", \"time\"] · [\"time\"] · [\"powers\", \"time\"] · [\"deaths:desc\"] (más muertes gana) · [\"deaths\", \"time:desc\"] (menos muertes; desempata el MAYOR tiempo). Criterio propio: { \"id\": \"saves\", \"type\": \"count\" | \"time\", \"order\": \"asc\" (gana el menor) | \"desc\" (gana el mayor), \"icon\": \"skull\" | \"clock\" | \"bolt\" | \"star\" | \"chair\" | \"hash\", \"label\": { \"es\": \"Rescates\", \"en\": \"Rescues\" }, \"short\": { \"es\": \"Resc.\", \"en\": \"Resc.\" } }. Si no pones criteria se usa [\"deaths\", \"time\"]. winners: cuántos ganadores se muestran en el ranking (1, 3, 5…; por defecto 3); el resto aparece solo en la tabla de participantes. results: participantes { name, avatar, scores } — scores lleva un valor por cada id de criteria; el tiempo puede ir en milisegundos (873483) o como texto \"14:33.483\". En challenges ACTIVOS/PRÓXIMOS deja scores vacío {}. El ranking se calcula solo.",
   "challenges": [
+    {
+      "id": "ICH-003",
+      "number": "03",
+      "status": "COMPLETED",
+      "date": "2025-11-01",
+      "placeholder": true,
+      "title": {
+        "es": "SILLA CALIENTE CHALLENGE",
+        "en": "HOT CHAIR CHALLENGE"
+      },
+      "description": {
+        "es": "Sentar a la mayor cantidad de sobrevivientes en la misma silla",
+        "en": "Win a match in the shortest time possible."
+      },
+      "rules": {
+        "es": [
+          "Usar la misma silla más de cuatro veces",
+          "Solo partidas de Rank y partidas rápidas (No 2vs8)",
+          "Es obligatorio ganar o empatar la partida"
+        ],
+        "en": [
+          "Use the same chair more than 4 times",
+          "Only rank matches and quick matches (Not 2vs8)",
+          "Is required win or get tie the match"
+        ]
+      },
+      "criteria": [
+        "chairs",
+        "time"
+      ],
+      "youtube": "https://www.youtube.com/watch?v=iMkcA0O6UKY",
+      "thumbnail": "public/IDV/Challenges/003/thumbnail.webp",
+      "winners": 3,
+      "results": [
+        {
+          "name": "Sopitatipa",
+          "avatar": "public/IDV/Characters/Hunters/oro-de-los-tontos.webp",
+          "scores": {
+            "chairs": 8,
+            "time": 505000
+          }
+        },
+        {
+          "name": "HideakyZ",
+          "avatar": "public/IDV/Characters/Hunters/pesadilla.webp",
+          "scores": {
+            "chairs": 8,
+            "time": 526000
+          }
+        },
+        {
+          "name": "ZKMR",
+          "avatar": "public/IDV/Characters/Hunters/reptiliano-malvado.webp",
+          "scores": {
+            "chairs": 8,
+            "time": 724000
+          }
+        },
+        {
+          "name": "Sirlex",
+          "avatar": "public/IDV/Characters/Hunters/tejealmas.webp",
+          "scores": {
+            "chairs": 7,
+            "time": 419000
+          }
+        },
+        {
+          "name": "Foolsito",
+          "avatar": "public/IDV/Characters/Hunters/tejealmas.webp",
+          "scores": {
+            "chairs": 6,
+            "time": 620000
+          }
+        },
+        {
+          "name": "PapitasV",
+          "avatar": "public/IDV/Characters/Hunters/geisha.webp",
+          "scores": {
+            "chairs": 5
+          }
+        }
+      ],
+      "winnersImage": "public/IDV/Challenges/003/winners.webp"
+    },
+    {
+      "id": "ICH-002",
+      "number": "02",
+      "status": "COMPLETED",
+      "date": "2025-09-19",
+      "placeholder": true,
+      "title": {
+        "es": "SPEEDRUN CHALLENGE",
+        "en": "SPEEDRUN CHALLENGE"
+      },
+      "description": {
+        "es": "Gana una partida en el menor tiempo posible",
+        "en": "Win a match in the shortest time possible."
+      },
+      "rules": {
+        "es": [
+          "Eliminar a todos los sobrevivientes",
+          "No usar el sótano",
+          "No se permiten partidas antiguas",
+          "No es necesario completarlo en Rank"
+        ],
+        "en": [
+          "Eliminate all survivors",
+          "Do not use the basement",
+          "Old save files are not permitted",
+          "Completion in Ranked mode is not required"
+        ]
+      },
+      "criteria": [
+        "time"
+      ],
+      "youtube": "https://www.youtube.com/watch?v=6BICi517U44",
+      "thumbnail": "public/IDV/Challenges/002/thumbnail.webp",
+      "winners": 5,
+      "results": [
+        {
+          "name": "HideakyZ",
+          "avatar": "public/IDV/Characters/Hunters/oro-de-los-tontos.webp",
+          "scores": {
+            "time": 172000
+          }
+        },
+        {
+          "name": "Laurenxy",
+          "avatar": "public/IDV/Characters/Hunters/nayade.webp",
+          "scores": {
+            "time": 183000
+          }
+        },
+        {
+          "name": "JustKing1000",
+          "avatar": "public/IDV/Characters/Hunters/bruja-de-ensueno.webp",
+          "scores": {
+            "time": 201000
+          }
+        },
+        {
+          "name": "ZKMR",
+          "avatar": "public/IDV/Characters/Hunters/reptiliano-malvado.webp",
+          "scores": {
+            "time": 211000
+          }
+        },
+        {
+          "name": "Sirlex",
+          "avatar": "public/IDV/Characters/Hunters/vendedora-ambulante.webp",
+          "scores": {
+            "time": 253000
+          }
+        },
+        {
+          "name": "Nyhe",
+          "avatar": "public/IDV/Characters/Hunters/nayade.webp",
+          "scores": {
+            "time": 268000
+          }
+        },
+        {
+          "name": "hola_soy_tape",
+          "avatar": "public/IDV/Characters/Hunters/cenobita.webp",
+          "scores": {
+            "time": 270000
+          }
+        },
+        {
+          "name": "_YaelDV_",
+          "avatar": "public/IDV/Characters/Hunters/carita-sonriente.webp",
+          "scores": {
+            "time": 287000
+          }
+        },
+        {
+          "name": "Antilief",
+          "avatar": "public/IDV/Characters/Hunters/carita-sonriente.webp",
+          "scores": {
+            "time": 285000
+          }
+        },
+        {
+          "name": "Foolsito",
+          "avatar": "public/IDV/Characters/Hunters/oro-de-los-tontos.webp",
+          "scores": {
+            "time": 370000
+          }
+        },
+        {
+          "name": "Sabritas",
+          "avatar": "public/IDV/Characters/Hunters/artista-de-cera.webp",
+          "scores": {
+            "time": 383000
+          }
+        },
+        {
+          "name": "花Tk~Winky¹z",
+          "avatar": "public/IDV/Characters/Hunters/fotografo.webp",
+          "scores": {
+            "time": 422000
+          }
+        }
+      ],
+      "winnersImage": "public/IDV/Challenges/002/winners.webp"
+    },
     {
       "id": "ICH-001",
       "number": "01",
@@ -35,6 +241,7 @@
       ],
       "youtube": "https://www.youtube.com/watch?v=IkBNvkPXvgk",
       "thumbnail": "public/IDV/Challenges/001/thumbnail.webp",
+      "winners": 3,
       "results": [
         {
           "name": "Stephh",

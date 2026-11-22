@@ -1,7 +1,7 @@
 ---
 import type { Lang } from '../../data/site';
 import { ui } from '../../i18n/ui';
-import { asset } from '../../i18n/paths';
+import { asset, youtubeId } from '../../i18n/paths';
 import type { Challenge, CriterionDef, CriterionIcon } from './types';
 import { rank, resolveCriteria, fmtTime, fmtValue, label, shortLabel, type Ranked } from './scoring';
 
@@ -11,7 +11,9 @@ const t = ui[lang].challenges;
 const done = c.status === 'COMPLETED';
 const criteria = resolveCriteria(c.criteria);
 const ranked = rank(c.results, criteria);
-const winners = done ? ranked.slice(0, 3) : [];
+/** Cuántos puestos se muestran como ganadores (por defecto 3, mínimo 1). */
+const winnersCount = Math.max(1, Math.floor(c.winners ?? 3));
+const winners = done ? ranked.slice(0, winnersCount) : [];
 const people = done ? ranked : ranked.map((r) => ({ ...r, place: 0 }));
 const pad = (n: number) => String(n).padStart(2, '0');
 const rules = (c.rules?.[lang] ?? []).filter((r) => r.trim());
@@ -34,6 +36,7 @@ const ICONS: Record<CriterionIcon, string> = {
   clock: '<circle cx="7" cy="7" r="5.5"></circle><path d="M7 4 V7 L9 8.5"></path>',
   bolt: '<path d="M8 1.5 L3 8 H7 L6 12.5 L11 6 H7 Z"></path>',
   star: '<path d="M7 1 L8.8 5 L13 5.4 L9.8 8.2 L10.8 12.5 L7 10.2 L3.2 12.5 L4.2 8.2 L1 5.4 L5.2 5 Z"></path>',
+  chair: '<path d="M4 1.5 H10 V7 M4 1.5 V7 M4 4.2 H10 M4 8.5 V12.5 M10 8.5 V12.5"></path><rect x="2.8" y="7" width="8.4" height="1.5" rx="0.4"></rect>',
   hash: '<path d="M5 1.5 L4 12.5 M10 1.5 L9 12.5 M2 5 H12.5 M1.5 9 H12"></path>',
 };
 const cols = criteria.map((k) => (k.type === 'time' ? '120px' : '100px')).join(' ');
@@ -115,7 +118,7 @@ const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' 
           </ol>
         </div>
         {c.youtube ? (
-          <a href={`https://www.youtube.com/watch?v=${c.youtube}`} target="_blank" rel="noopener" class="btn btn--solid dossier__cta">
+          <a href={`https://www.youtube.com/watch?v=${youtubeId(c.youtube)}`} target="_blank" rel="noopener" class="btn btn--solid dossier__cta">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="#A51F24"><path d="M5 3 L13 8 L5 13 Z"></path></svg>{t.watchVideo}</a>
         ) : (
           <button type="button" class="btn btn--ghost dossier__cta" disabled>{t.noVideo}</button>
@@ -139,8 +142,11 @@ const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' 
           <ol>
             {people.map((p) => (
               <li class="people__row">
-                <span class:list={['pos', { top: done && p.place <= 3 }]}>{done ? pad(p.place) : '—'}</span>
-                <span class="name">{p.name}</span>
+                <span class:list={['pos', { top: done && p.place <= winnersCount }]}>{done ? pad(p.place) : '—'}</span>
+                <span class="who">
+                  <span class="ava" aria-hidden="true">{p.avatar && <img src={asset(p.avatar)} alt="" width="28" height="28" loading="lazy" />}</span>
+                  <span class="name">{p.name}</span>
+                </span>
                 {criteria.map((k, i) => <span class="num"><span class="sr-only">{k.label[lang]}: </span>{done ? fmtValue(p.values[i], k) : '—'}</span>)}
               </li>
             ))}
@@ -231,7 +237,10 @@ const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' 
   .people__row .pos, .people__row .num { font-family: var(--f-mono); font-size: 12px; color: var(--muted-2); }
   .people__row .pos { color: var(--steel); }
   .people__row .pos.top { color: var(--red); }
-  .people__row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .people__row .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .people__row .ava { flex: none; width: 28px; height: 28px; border-radius: 50%; overflow: hidden; border: 1px solid var(--line-strong); background: radial-gradient(circle at 50% 35%, #34383D, #111214 70%); }
+  .people__row .ava img { width: 100%; height: 100%; object-fit: cover; }
+  .people__row .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   @media (max-width: 560px) {
     .dossier__bar { padding: 14px 16px; font-size: 10px; letter-spacing: 0.16em; }
@@ -261,6 +270,8 @@ const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' 
     .people__toggle { min-height: 48px; padding: 0 18px; letter-spacing: 0.14em; }
     .people__row { grid-template-columns: 30px minmax(0, 1fr) var(--cols-m); gap: 8px; padding: 10px 12px; }
     .people__row--head { padding-block: 9px; font-size: 9px; letter-spacing: 0.1em; }
+    .people__row .who { gap: 8px; }
+    .people__row .ava { width: 24px; height: 24px; }
     .people__row--head .long { display: none; }
     .people__row--head .short { display: inline; }
     .people__row .pos, .people__row .num { font-size: 11px; }

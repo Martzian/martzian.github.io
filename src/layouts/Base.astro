@@ -94,7 +94,7 @@ const current = (s: string) => (s === slug ? 'page' : undefined);
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;500;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" />
-  <script is:inline>document.documentElement.classList.replace('no-js', 'js');</script>
+  <script is:inline>document.documentElement.classList.replace('no-js', 'js');try{if(localStorage.getItem('mz-motion')==='full')document.documentElement.dataset.motion='full';}catch(e){}</script>
   <script type="application/ld+json" set:html={ld} />
   <slot name="head" />
 </head>
@@ -118,6 +118,9 @@ const current = (s: string) => (s === slug ? 'page' : undefined);
       <div class="pill-group" role="group" aria-label={t.langAria}>
         <a class="pill" href={href('es', slug)} hreflang="es" lang="es" aria-current={lang === 'es' ? 'true' : undefined}>ES</a>
         <a class="pill" href={href('en', slug)} hreflang="en" lang="en" aria-current={lang === 'en' ? 'true' : undefined}>EN</a>
+      </div>
+      <div class="pill-group motion-toggle">
+        <button type="button" class="pill" aria-pressed="false" aria-label={t.motionAria} title={t.motionAria} data-motion-toggle>FX</button>
       </div>
     </div>
   </header>

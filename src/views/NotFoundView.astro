@@ -2,29 +2,692 @@
 import Base from '../layouts/Base.astro';
 import type { Lang } from '../data/site';
 import { ui } from '../i18n/ui';
-import { href } from '../i18n/paths';
+import { href, asset } from '../i18n/paths';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = ui[lang].notFound;
 ---
-<Base lang={lang} slug="404" title={t.title} description={t.description} noindex>
-  <section class="lost">
-    <div class="lost__num" aria-hidden="true">404</div>
-    <p class="kicker">{t.k}</p>
-    <h1>{t.h}</h1>
-    <p class="muted">{t.p}</p>
-    <div class="lost__ctas">
-      <a href={href('es')} class="btn btn--solid">{t.back}</a>
-      <a href={href('en')} class="btn btn--ghost">{ui.en.notFound.back}</a>
+<Base lang={lang} slug="404" title={t.title} description={t.description} noindex immersive overlayHeader>
+  <section class="lost" data-lost data-home={href(lang)}>
+    <div class="lost__noise" aria-hidden="true"></div>
+
+    <!-- Martzian: aparece de forma intermitente -->
+    <picture class="lost__ghost" aria-hidden="true" data-ghost>
+      <source type="image/webp" srcset={asset('img/martzian-800.webp')} />
+      <img src={asset('img/martzian-1080.jpg')} alt="" width="800" height="800" decoding="async" />
+    </picture>
+
+    <div class="lost__copy">
+      <p class="kicker" aria-label={t.k} data-corrupt>{t.k}</p>
+      <h1 class="lost__h" aria-label={t.h} data-text={t.h} data-corrupt>{t.h}</h1>
+    </div>
+
+    <a href={href(lang)} class="lost__back" data-back data-cursor="?">
+      <span class="lost__back-c lost__back-c--tl" aria-hidden="true"></span>
+      <span class="lost__back-c lost__back-c--br" aria-hidden="true"></span>
+      <span class="lost__back-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+      </span>
+      <span class="lost__back-txt">
+        <small>{t.exit}</small>
+        <b aria-label={t.back} data-text={t.back} data-corrupt>{t.back}</b>
+      </span>
+    </a>
+    <div class="lost__tears" aria-hidden="true" data-tears><i></i><i></i><i></i><i></i></div>
+
+    <div class="lost__scream" aria-hidden="true" data-scream>
+      <span data-text={t.scream} data-scream-text>{t.scream}</span>
     </div>
   </section>
 </Base>
 
+<script>
+  import { reducedMotion } from '../scripts/motion';
+  const root = document.querySelector<HTMLElement>('[data-lost]');
+  if (root) {
+    const ghost = root.querySelector<HTMLElement>('[data-ghost]')!;
+    const btn = root.querySelector<HTMLAnchorElement>('[data-back]')!;
+    const tears = Array.from(root.querySelectorAll<HTMLElement>('[data-tears] i'));
+    const corruptEls = Array.from(root.querySelectorAll<HTMLElement>('[data-corrupt]')).map((el) => ({ el, src: el.textContent || '' }));
+    const scream = root.querySelector<HTMLElement>('[data-scream]')!;
+    const home = root.dataset.home || '/';
+    const reduced = reducedMotion();
+
+    const MAX_DODGES = 5;
+    const SCALES = [1, 0.82, 0.66, 0.52, 0.42, 0.34];
+    let dodges = 0;
+    let screaming = false;
+    let lastDodge = 0;
+    let armedAt = 0; // 0 = el botón aún está quieto; el primer clic lo arma y lo hace huir
+    const armed = () => armedAt > 0 && performance.now() - armedAt > 450;
+
+    /* ---------- Sonido (sintetizado con Web Audio, sin archivos) ---------- */
+    const sfx = (() => {
+      const AC: typeof AudioContext | undefined = window.AudioContext || (window as any).webkitAudioContext;
+      let ctx: AudioContext | null = null;
+      let master: GainNode, drone: GainNode, lowpass: BiquadFilterNode, hiss: GainNode;
+      let running = false;
+      let faded = false;
+      let lvl = 0;
+      let beatTimer = 0;
+      let noise: AudioBuffer;
+
+      function makeNoise(sec: number) {
+        const b = ctx!.createBuffer(1, Math.floor(ctx!.sampleRate * sec), ctx!.sampleRate);
+        const d = b.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        return b;
+      }
+      function osc(type: OscillatorType, freq: number, dest: AudioNode, gain = 1) {
+        const o = ctx!.createOscillator();
+        const g = ctx!.createGain();
+        o.type = type; o.frequency.value = freq; g.gain.value = gain;
+        o.connect(g).connect(dest); o.start();
+        return o;
+      }
+      function lfo(freq: number, depth: number, param: AudioParam) {
+        const o = ctx!.createOscillator();
+        const g = ctx!.createGain();
+        o.frequency.value = freq; g.gain.value = depth;
+        o.connect(g).connect(param); o.start();
+      }
+
+      function build() {
+        const c = ctx!;
+        noise = makeNoise(2);
+        const comp = c.createDynamicsCompressor();
+        comp.threshold.value = -10; comp.ratio.value = 6;
+        master = c.createGain(); master.gain.value = 0; // arranca en silencio total: evita el 'clack'
+        master.connect(comp).connect(c.destination);
+
+        // tensión: zumbido grave disonante + silbido agudo + viento
+        drone = c.createGain(); drone.gain.value = 0;
+        drone.connect(master);
+        lowpass = c.createBiquadFilter();
+        lowpass.type = 'lowpass'; lowpass.frequency.value = 260; lowpass.Q.value = 7;
+        lowpass.connect(drone);
+        lfo(0.08, 90, lowpass.frequency);
+        osc('sawtooth', 55, lowpass, 0.35);
+        osc('sawtooth', 55.7, lowpass, 0.35);
+        osc('sawtooth', 77.8, lowpass, 0.18); // tritono: incómodo
+
+        hiss = c.createGain(); hiss.gain.value = 0.012;
+        hiss.connect(drone);
+        lfo(4.5, 0.008, hiss.gain);
+        osc('sine', 1244, hiss);
+        osc('sine', 1318, hiss);
+
+        const wind = c.createBufferSource();
+        wind.buffer = noise; wind.loop = true;
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.9;
+        lfo(0.13, 250, bp.frequency);
+        const wg = c.createGain(); wg.gain.value = 0.18;
+        wind.connect(bp).connect(wg).connect(drone);
+        wind.start();
+      }
+
+      // estática de "sintonizar una señal": entra y sale suave, disimula cualquier chasquido del arranque
+      function tuneIn(t: number) {
+        const c = ctx!;
+        const src = c.createBufferSource(); src.buffer = noise; src.loop = true;
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7;
+        bp.frequency.setValueAtTime(1200, t);
+        bp.frequency.exponentialRampToValueAtTime(3200, t + 0.9);
+        bp.frequency.exponentialRampToValueAtTime(700, t + 2.2);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.09, t + 0.5);
+        g.gain.linearRampToValueAtTime(0.05, t + 1.2);
+        g.gain.linearRampToValueAtTime(0, t + 2.4);
+        src.connect(hp).connect(bp).connect(g).connect(master);
+        src.start(t); src.stop(t + 2.5);
+      }
+
+      function heartbeat() {
+        clearTimeout(beatTimer);
+        if (!running || lvl < 2) return;
+        const t = ctx!.currentTime;
+        [0, 0.22].forEach((off, i) => {
+          const o = ctx!.createOscillator();
+          const g = ctx!.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(90, t + off);
+          o.frequency.exponentialRampToValueAtTime(38, t + off + 0.16);
+          g.gain.setValueAtTime(0.0001, t + off);
+          g.gain.exponentialRampToValueAtTime((i ? 0.25 : 0.4) * (0.5 + lvl * 0.12), t + off + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.2);
+          o.connect(g).connect(master);
+          o.start(t + off); o.stop(t + off + 0.25);
+        });
+        beatTimer = window.setTimeout(heartbeat, 1150 - lvl * 130);
+      }
+
+      function apply() {
+        if (!running) return;
+        const t = ctx!.currentTime;
+        // cada intento sube el volumen y abre el filtro (se vuelve más áspero)
+        const ramp = faded ? 1 : 5;
+        const glide = (param: AudioParam, from: number | null, to: number) => {
+          param.cancelScheduledValues(t);
+          param.setValueAtTime(from ?? param.value, t);
+          param.linearRampToValueAtTime(to, t + ramp);
+        };
+        glide(drone.gain, faded ? null : 0, 0.06 + lvl * 0.045);
+        glide(lowpass.frequency, faded ? null : 120, 260 + lvl * 160);
+        glide(hiss.gain, faded ? null : 0, 0.012 + lvl * 0.006);
+        faded = true;
+        heartbeat();
+      }
+
+      function start() {
+        if (!AC) return;
+        if (!ctx) { ctx = new AC(); build(); }
+        ctx.resume().then(() => {
+          if (ctx!.state !== 'running' || running) return;
+          running = true;
+          // sube el volumen general muy suave y tapa el arranque con estática de radio
+          const t = ctx!.currentTime;
+          master.gain.cancelScheduledValues(t);
+          master.gain.setValueAtTime(0, t);
+          master.gain.setValueAtTime(0, t + 0.08);
+          master.gain.linearRampToValueAtTime(0.9, t + 1.2);
+          tuneIn(t);
+          apply();
+        }).catch(() => {});
+      }
+
+      return {
+        start,
+        isRunning: () => running,
+        level(l: number) { lvl = l; apply(); },
+        // chasquido de estática cuando el botón huye
+        blip() {
+          if (!running) return;
+          const t = ctx!.currentTime;
+          const src = ctx!.createBufferSource();
+          src.buffer = noise;
+          const hp = ctx!.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+          const g = ctx!.createGain();
+          g.gain.setValueAtTime(0.12 + lvl * 0.03, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+          src.connect(hp).connect(g).connect(master);
+          src.start(t, Math.random()); src.stop(t + 0.1);
+        },
+        scream() {
+          start(); // el clic del botón ya cuenta como interacción
+          if (!ctx) return;
+          const c = ctx;
+          const go = () => {
+            clearTimeout(beatTimer);
+            const t = c.currentTime;
+            master.gain.cancelScheduledValues(t);
+            master.gain.setValueAtTime(0.9, t);
+            drone.gain.cancelScheduledValues(t);
+            drone.gain.setValueAtTime(drone.gain.value, t);
+            drone.gain.linearRampToValueAtTime(0, t + 0.03);
+
+            const out = c.createGain();
+            out.gain.setValueAtTime(0.0001, t);
+            out.gain.exponentialRampToValueAtTime(0.6, t + 0.02);
+            out.gain.setValueAtTime(0.6, t + 1.0);
+            out.gain.exponentialRampToValueAtTime(0.0001, t + 1.65);
+            const shaper = c.createWaveShaper();
+            const curve = new Float32Array(1024);
+            for (let i = 0; i < curve.length; i++) { const x = (i / 1023) * 2 - 1; curve[i] = Math.tanh(x * 6); }
+            shaper.curve = curve;
+            shaper.connect(out).connect(master);
+
+            // chillido: cluster disonante que sube de tono con vibrato rápido
+            [233, 247, 311, 349, 466, 698].forEach((f) => {
+              const o = c.createOscillator();
+              o.type = 'sawtooth';
+              o.frequency.setValueAtTime(f * 0.7, t);
+              o.frequency.exponentialRampToValueAtTime(f * 1.6, t + 0.35);
+              o.frequency.exponentialRampToValueAtTime(f * 1.3, t + 1.6);
+              const v = c.createOscillator(); const vg = c.createGain();
+              v.frequency.value = 22 + Math.random() * 14; vg.gain.value = f * 0.06;
+              v.connect(vg).connect(o.frequency);
+              const g = c.createGain(); g.gain.value = 0.12;
+              o.connect(g).connect(shaper);
+              o.start(t); v.start(t); o.stop(t + 1.7); v.stop(t + 1.7);
+            });
+            // ráfaga de estática que barre
+            const n = c.createBufferSource(); n.buffer = noise; n.loop = true;
+            const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+            bp.frequency.setValueAtTime(700, t);
+            bp.frequency.exponentialRampToValueAtTime(3800, t + 0.3);
+            bp.frequency.exponentialRampToValueAtTime(1400, t + 1.6);
+            const ng = c.createGain(); ng.gain.value = 0.7;
+            n.connect(bp).connect(ng).connect(shaper);
+            n.start(t); n.stop(t + 1.7);
+            // golpe grave
+            const boom = c.createOscillator(); const bg = c.createGain();
+            boom.frequency.setValueAtTime(120, t); boom.frequency.exponentialRampToValueAtTime(35, t + 0.5);
+            bg.gain.setValueAtTime(0.55, t); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+            boom.connect(bg).connect(master); boom.start(t); boom.stop(t + 0.75);
+          };
+          if (c.state === 'running') go();
+          else c.resume().then(go).catch(() => {});
+        },
+      };
+    })();
+
+
+    /* ---------- Corrupción progresiva ---------- */
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const chance = (p: number) => Math.random() < p;
+    const pickArr = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+    const pick = (str: string) => str[Math.floor(Math.random() * str.length)];
+    const LEET: Record<string, string> = { A: '4', E: '3', I: '1', O: '0', S: '5', T: '7', B: '8', G: '6', Z: '2' };
+    // letras "rusas" (cirílico) y algo de griego que se parecen o se sienten ajenas
+    const ALIEN: Record<string, string[]> = {
+      A: ['Д', 'Λ', 'Å'], B: ['Б', 'Ъ', 'β'], C: ['С', 'Ҫ'], D: ['Д', 'Ð'], E: ['Э', 'Ё', 'Є', 'Ξ'], F: ['Ф', 'Ғ'],
+      G: ['Б', 'Ǥ'], H: ['Н', 'Ӊ', 'Ħ'], I: ['І', 'Ї', 'Ӏ'], J: ['Ј'], K: ['Ж', 'К', 'Ҝ'], L: ['Ꮭ', 'Ľ'], M: ['М', 'Ӎ'],
+      N: ['И', 'Й', 'Ŋ'], O: ['Ф', 'Θ', 'Ø'], P: ['Р', 'Þ'], Q: ['Ǫ'], R: ['Я', 'Ʀ'], S: ['Ѕ', 'Ş', '§'], T: ['Т', 'Г', 'Ŧ'],
+      U: ['Ц', 'Џ', 'Ʊ'], V: ['Ѵ', 'Ʋ'], W: ['Ш', 'Щ', 'Ѡ'], X: ['Ж', 'Ӿ'], Y: ['Ч', 'У', 'Ұ'], Z: ['Ʒ', 'Ꙁ'],
+    };
+    const BASE: Record<string, string> = { Á: 'A', É: 'E', Í: 'I', Ó: 'O', Ú: 'U', Ü: 'U', Ñ: 'N' };
+    const GLYPHS = '█▓▒░#%&@$¿?!/|<>[]{}*¤ж';
+    const STYLES = ['x-f', 'x-u', 'x-g', 'x-d', 'x-m', 'x-s', 'x-o'];
+    const esc = (c: string) => (c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : c);
+
+    type Glyph = { c: string; cls: string[] };
+    // nivel 0..5: letras → números → cirílico → símbolos; además letras volteadas, sin color y de otra fuente
+    function corrupt(text: string, level: number, burst = false): Glyph[] {
+      const b = burst ? 1 : 0;
+      const pGlyph = level < 2 && !b ? 0 : Math.min(0.35, (level - 1) * 0.05 + b * 0.1);
+      const pAlien = Math.min(0.6, level * 0.1 + b * 0.18);
+      const pLeet = Math.min(0.5, level * 0.08 + b * 0.12);
+      const pStyle = Math.min(0.85, level * 0.13 + b * 0.25);
+      let out: Glyph[] = [];
+      for (const ch of text) {
+        if (ch === ' ' || ch === '·') {
+          out.push({ c: level >= 4 && chance(0.15) ? pick(GLYPHS) : ch, cls: [] });
+          continue;
+        }
+        const up = BASE[ch.toUpperCase()] || ch.toUpperCase();
+        let c = ch;
+        const r = Math.random();
+        if (r < pGlyph) c = pick(GLYPHS);
+        else if (r < pGlyph + pAlien && ALIEN[up]) c = pickArr(ALIEN[up]);
+        else if (r < pGlyph + pAlien + pLeet && LEET[up]) c = LEET[up];
+        const cls: string[] = [];
+        if (chance(pStyle)) cls.push(pickArr(STYLES));
+        if (level >= 3 && chance(pStyle * 0.4)) cls.push(pickArr(STYLES));
+        out.push({ c, cls });
+      }
+      // al revés: en ráfagas fuertes se invierte el orden de las letras
+      if ((level >= 3 && b && chance(0.35)) || (level >= 5 && chance(0.25))) out = out.reverse();
+      return out;
+    }
+    const toHtml = (g: Glyph[]) => g.map(({ c, cls }) => (cls.length ? `<span class="${cls.join(' ')}">${esc(c)}</span>` : esc(c))).join('');
+    const toText = (g: Glyph[]) => g.map((x) => x.c).join('');
+
+    let baseGlyphs = corruptEls.map((c) => corrupt(c.src, 0));
+    function paint(glyphs: Glyph[][]) {
+      corruptEls.forEach((c, i) => {
+        c.el.innerHTML = toHtml(glyphs[i]);
+        if (c.el.dataset.text !== undefined) c.el.dataset.text = toText(glyphs[i]);
+      });
+    }
+    function damage(level: number) {
+      sfx.level(level);
+      sfx.blip();
+      root!.dataset.dmg = String(level);
+      root!.style.setProperty('--dmg', String(level));
+      baseGlyphs = corruptEls.map((c) => corrupt(c.src, level));
+      paint(baseGlyphs);
+      // desgarros horizontales
+      tears.forEach((tr) => {
+        tr.style.top = `${rand(5, 95)}%`;
+        tr.style.height = `${rand(2, 6 + level * 3)}px`;
+        tr.style.setProperty('--tx', `${rand(-30, 30) * level}px`);
+      });
+    }
+    // ráfagas de corrupción: cada vez más frecuentes y violentas
+    function flickerText() {
+      if (screaming) return;
+      const lvl = dodges;
+      if (!reduced) {
+        paint(corruptEls.map((c) => corrupt(c.src, Math.max(1, lvl), true)));
+        root!.classList.add('is-tear');
+        // espejo / de cabeza en los niveles altos
+        if (lvl >= 2 && chance(0.25 + lvl * 0.08)) root!.classList.add(lvl >= 4 && chance(0.4) ? 'is-upside' : 'is-mirror');
+        setTimeout(() => {
+          paint(baseGlyphs);
+          root!.classList.remove('is-tear', 'is-mirror', 'is-upside');
+        }, rand(70, 160 + lvl * 50));
+      }
+      setTimeout(flickerText, rand(2600, 4800) / (1 + lvl * 0.9));
+    }
+    setTimeout(flickerText, 3000);
+
+    /* ---------- Martzian intermitente ---------- */
+    function haunt() {
+      if (screaming) return;
+      const big = Math.random() < 0.25;
+      const s = big ? rand(1.3, 1.7) : rand(0.7, 1.05);
+      ghost.style.setProperty('--gx', `${rand(-28, 28)}vw`);
+      ghost.style.setProperty('--gy', `${rand(-12, 12)}vh`);
+      ghost.style.setProperty('--gs', String(s));
+      ghost.classList.add('is-on');
+      if (!reduced) root!.classList.add('is-glitch');
+      setTimeout(() => {
+        ghost.classList.remove('is-on');
+        root!.classList.remove('is-glitch');
+      }, big ? rand(260, 420) : rand(90, 220));
+      setTimeout(haunt, rand(900, 3200) * (1 - dodges * 0.13));
+    }
+    setTimeout(haunt, 1400);
+
+    /* ---------- Botón que huye ---------- */
+    function place(x: number, y: number) {
+      btn.style.left = `${x}px`;
+      btn.style.top = `${y}px`;
+    }
+
+    function dodge(px: number, py: number) {
+      if (dodges >= MAX_DODGES || screaming) return;
+      const now = performance.now();
+      if (now - lastDodge < 260) return; // un acercamiento = un salto
+      lastDodge = now;
+      dodges++;
+      btn.style.setProperty('--s', String(SCALES[dodges]));
+      const r = root!.getBoundingClientRect();
+      const b = btn.getBoundingClientRect();
+      const pad = 24;
+      const w = b.width, h = b.height;
+      // busca un punto lejos del puntero
+      let best = { x: pad, y: pad, d: -1 };
+      for (let i = 0; i < 14; i++) {
+        const x = rand(pad, Math.max(pad, r.width - w - pad));
+        const y = rand(pad + 70, Math.max(pad + 70, r.height - h - pad));
+        const d = Math.hypot(x + w / 2 - (px - r.left), y + h / 2 - (py - r.top));
+        if (d > best.d) best = { x, y, d };
+      }
+      place(best.x, best.y);
+      btn.classList.remove('is-jump');
+      void btn.offsetWidth;
+      btn.classList.add('is-jump');
+      damage(dodges);
+      if (dodges === MAX_DODGES) btn.classList.add('is-stuck');
+    }
+
+    function nearButton(x: number, y: number, radius: number) {
+      const b = btn.getBoundingClientRect();
+      const cx = Math.max(b.left, Math.min(x, b.right));
+      const cy = Math.max(b.top, Math.min(y, b.bottom));
+      return Math.hypot(x - cx, y - cy) < radius;
+    }
+
+    // al acercarse: huye; una vez quieto (5 saltos), acercarse dispara el screamer
+    function approach(x: number, y: number) {
+      if (dodges < MAX_DODGES) dodge(x, y);
+      else startScream();
+    }
+    // ratón: huye al acercarse
+    root.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || !armed()) return;
+      if (nearButton(e.clientX, e.clientY, 70)) approach(e.clientX, e.clientY);
+    });
+    // táctil: huye al intentar tocarlo
+    btn.addEventListener('pointerdown', (e) => {
+      if (armed()) { e.preventDefault(); approach(e.clientX, e.clientY); }
+    });
+    // teclado: huye al enfocarlo
+    btn.addEventListener('focus', () => {
+      if (armed()) {
+        const b = btn.getBoundingClientRect();
+        approach(b.left + b.width / 2, b.top + b.height / 2);
+      }
+    });
+
+    /* ---------- Screamer ---------- */
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // primer clic: arranca el sonido y el botón huye de inmediato
+      if (!armedAt) {
+        armedAt = performance.now();
+        sfx.start();
+        sfx.level(0);
+        if (!reduced) {
+          root!.classList.add('is-tear', 'is-glitch');
+          setTimeout(() => root!.classList.remove('is-tear', 'is-glitch'), 220);
+        }
+        dodge(e.clientX || btn.getBoundingClientRect().left, e.clientY || btn.getBoundingClientRect().top);
+        return;
+      }
+      if (!armed()) return;
+      if (dodges < MAX_DODGES) {
+        const b = btn.getBoundingClientRect();
+        dodge(b.left + b.width / 2, b.top + b.height / 2);
+        return;
+      }
+      startScream();
+    });
+
+    function startScream() {
+      if (screaming || performance.now() - lastDodge < 400) return; // el mismo gesto que lo detuvo no cuenta
+      screaming = true;
+      ghost.classList.remove('is-on');
+      sfx.scream();
+      scream.classList.add('is-on');
+      document.documentElement.classList.add('mz-screaming');
+      const sEl = scream.querySelector<HTMLElement>('[data-scream-text]')!;
+      const sSrc = sEl.dataset.text || sEl.textContent || '';
+      if (!reduced) {
+        setInterval(() => {
+          const g = chance(0.4) ? corrupt(sSrc, 0) : corrupt(sSrc, 4, chance(0.5));
+          sEl.innerHTML = toHtml(g);
+          sEl.dataset.text = toText(g);
+          scream.style.setProperty('--sx', `${rand(-14, 14)}px`);
+          scream.style.setProperty('--sk', `${rand(-12, 12)}deg`);
+        }, 70);
+      }
+      setTimeout(() => { location.href = home; }, 1700);
+    }
+
+    // el botón aparece de una, en su sitio inicial
+    requestAnimationFrame(() => {
+      const r = root.getBoundingClientRect();
+      const b = btn.getBoundingClientRect();
+      place((r.width - b.width) / 2, r.height * 0.74);
+      btn.classList.add('is-ready');
+    });
+  }
+</script>
+
 <style>
-  .lost { position: relative; min-height: 72vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 20px; padding: 80px var(--gutter); overflow: hidden; background: radial-gradient(ellipse 50% 60% at 70% 50%, #2a0a0d, transparent 70%); }
-  .lost__num { position: absolute; right: -2vw; top: 50%; transform: translateY(-50%); font-family: var(--f-display); font-weight: 800; font-size: 40vw; line-height: 1; color: rgba(215, 215, 215, 0.03); animation: mz-flicker 5s infinite; }
-  .lost h1 { font-size: clamp(48px, 8vw, 104px); max-width: 900px; position: relative; }
-  .lost p.muted { max-width: 480px; font-size: 16px; line-height: 1.65; position: relative; }
-  .lost__ctas { display: flex; gap: 12px; flex-wrap: wrap; position: relative; }
+  .lost {
+    position: relative; height: 100vh; height: 100svh; overflow: hidden;
+    display: grid; place-items: center; padding: 96px var(--edge) 150px;
+    background: radial-gradient(ellipse 60% 55% at 50% 45%, #1c0507, #050505 75%);
+    isolation: isolate;
+  }
+  .lost::after { /* viñeta + scanlines */
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.35) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.85) 100%);
+  }
+  .lost__noise {
+    position: absolute; inset: -50%; z-index: 0; opacity: 0.06; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: lost-noise 0.6s steps(4) infinite;
+  }
+
+  /* Martzian fantasma */
+  .lost__ghost {
+    position: absolute; left: 50%; top: 50%; z-index: 1; pointer-events: none;
+    width: min(70vmin, 640px); opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--gx, 0), var(--gy, 0)) scale(var(--gs, 1));
+    filter: grayscale(0.4) contrast(1.4) brightness(0.9) drop-shadow(0 0 40px rgba(255,55,55,0.35));
+    mix-blend-mode: screen;
+  }
+  .lost__ghost img { width: 100%; height: auto; display: block; -webkit-mask-image: radial-gradient(circle, #000 45%, transparent 72%); mask-image: radial-gradient(circle, #000 45%, transparent 72%); }
+  .lost__ghost.is-on { opacity: 0.85; animation: lost-ghost 0.12s steps(2) infinite; }
+
+  /* Texto */
+  .lost__copy { position: relative; z-index: 2; text-align: center; display: grid; gap: 18px; justify-items: center; }
+  :global(html:has(.lost)), :global(body:has(.lost)) { overflow: hidden; height: 100%; overscroll-behavior: none; }
+  :global(body:has(.lost) .dock) { display: none; }
+  .lost__h {
+    position: relative; font-size: clamp(56px, min(14vw, 19vh), 230px); max-width: 14ch; color: var(--white, #eee);
+    text-shadow: 0 0 30px rgba(255,55,55,0.35); animation: mz-flicker 4s infinite;
+  }
+  .lost__h::before, .lost__h::after {
+    content: attr(data-text); position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  }
+  .lost__h::before { color: var(--red); transform: translate(-4px, 0); clip-path: inset(10% 0 55% 0); }
+  .lost__h::after  { color: #3cf; transform: translate(4px, 0); clip-path: inset(60% 0 8% 0); }
+  .lost.is-glitch .lost__h::before, .lost.is-glitch .lost__h::after { opacity: 0.8; }
+  .lost.is-glitch .lost__h { animation: mz-glitch 0.2s steps(2) infinite; }
+
+  /* ---------- Letras corruptas ---------- */
+  [data-corrupt] :global(span), .lost__scream :global(span span) { display: inline-block; }
+  [data-corrupt] :global(.x-f), .lost__scream :global(.x-f) { transform: scaleX(-1); }
+  [data-corrupt] :global(.x-u), .lost__scream :global(.x-u) { transform: rotate(180deg); }
+  [data-corrupt] :global(.x-g), .lost__scream :global(.x-g) { color: #8a8a8a; text-shadow: none; }
+  [data-corrupt] :global(.x-d), .lost__scream :global(.x-d) { opacity: 0.3; }
+  [data-corrupt] :global(.x-m), .lost__scream :global(.x-m) { font-family: var(--f-mono); font-weight: 400; font-size: 0.8em; }
+  [data-corrupt] :global(.x-s), .lost__scream :global(.x-s) { font-family: 'Times New Roman', Georgia, serif; font-style: italic; font-weight: 400; }
+  [data-corrupt] :global(.x-o), .lost__scream :global(.x-o) { color: transparent; -webkit-text-stroke: 1px currentColor; -webkit-text-stroke-color: #bbb; }
+  .lost__copy { transition: transform 0.3s; }
+  .lost.is-mirror .lost__copy { transform: scaleX(-1) !important; transition: none; }
+  .lost.is-upside .lost__copy { transform: rotate(180deg) !important; transition: none; }
+
+  /* ---------- Daño progresivo (data-dmg 1..5) ---------- */
+  .lost { --dmg: 0; }
+  .lost__noise { opacity: calc(0.06 + var(--dmg) * 0.035); }
+  .lost__copy { transform: skewX(calc(var(--dmg) * -1.2deg)) rotate(calc(var(--dmg) * 0.35deg)); transition: transform 0.3s; }
+  .lost[data-dmg] .lost__h::before, .lost[data-dmg] .lost__h::after { opacity: calc(var(--dmg) * 0.14); }
+  .lost[data-dmg] .lost__h::before { transform: translate(calc(var(--dmg) * -2px), 0); }
+  .lost[data-dmg] .lost__h::after  { transform: translate(calc(var(--dmg) * 2px), 0); }
+  .lost[data-dmg='2'] { filter: contrast(1.1) grayscale(0.25); }
+  .lost[data-dmg='3'] { filter: contrast(1.15) grayscale(0.45); }
+  .lost[data-dmg='3'] .lost__h { animation: mz-flicker 1.6s infinite; }
+  .lost[data-dmg='4'] { filter: contrast(1.25) grayscale(0.7); }
+  .lost[data-dmg='4'] .lost__h, .lost[data-dmg='5'] .lost__h { animation: mz-flicker 0.9s infinite, lost-shiver 0.18s steps(2) infinite; }
+  .lost[data-dmg='5'] { filter: contrast(1.4) grayscale(0.9); }
+  .lost[data-dmg='5'] .lost__copy { filter: blur(0.4px); }
+  .lost.is-tear .lost__copy { transform: skewX(calc(var(--dmg) * -1.2deg - 6deg)) translateX(calc(var(--dmg) * 3px)); }
+  .lost.is-tear .lost__h::before, .lost.is-tear .lost__h::after { opacity: 0.9; }
+
+  .lost:has(.lost__scream.is-on) { filter: none; }
+  .lost__tears { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .lost__tears i {
+    position: absolute; left: 0; right: 0; height: 3px; opacity: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,55,55,0.5) 20%, rgba(255,255,255,0.25) 50%, rgba(60,200,255,0.4) 80%, transparent);
+    transform: translateX(var(--tx, 0)); mix-blend-mode: screen;
+  }
+  .lost[data-dmg] .lost__tears i:nth-child(1),
+  .lost[data-dmg='3'] .lost__tears i:nth-child(-n+2),
+  .lost[data-dmg='4'] .lost__tears i:nth-child(-n+3),
+  .lost[data-dmg='5'] .lost__tears i { animation: lost-tear 1.3s steps(3) infinite; }
+  .lost__tears i:nth-child(2) { animation-delay: -0.4s; }
+  .lost__tears i:nth-child(3) { animation-delay: -0.8s; }
+  .lost__tears i:nth-child(4) { animation-delay: -1.1s; }
+  .lost.is-tear .lost__tears i { opacity: 0.9; }
+
+  /* Botón: salida de emergencia */
+  .lost__back {
+    --s: 1; --cut: 14px;
+    position: absolute; z-index: 4; left: 50%; top: 74%; opacity: 0; pointer-events: none;
+    display: inline-flex; align-items: center; gap: 16px; padding: 14px 22px 14px 18px;
+    color: var(--white, #eee); text-decoration: none; white-space: nowrap; isolation: isolate;
+    transform: scale(var(--s)); transform-origin: center;
+    transition: left 0.18s cubic-bezier(.2,.9,.3,1.4), top 0.18s cubic-bezier(.2,.9,.3,1.4), transform 0.25s ease, opacity 0.2s ease, color 0.2s;
+    filter: drop-shadow(0 0 18px rgba(255,55,55,0.35));
+  }
+  /* borde rojo + relleno con esquinas cortadas */
+  .lost__back::before, .lost__back::after {
+    content: ''; position: absolute; z-index: -1;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  }
+  .lost__back::before { inset: 0; background: linear-gradient(120deg, var(--red), #6b0a10 60%, var(--red)); background-size: 200% 100%; animation: lost-border 2.4s linear infinite; }
+  .lost__back::after {
+    inset: 1px;
+    background:
+      linear-gradient(90deg, transparent, rgba(255,55,55,0.22), transparent) -100% 0 / 40% 100% no-repeat,
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg, #1a0306, #070707);
+    animation: lost-sweep 2.8s ease-in-out infinite;
+    transition: background-color 0.2s;
+  }
+  .lost__back-c { position: absolute; width: 10px; height: 10px; border: 0 solid var(--red); pointer-events: none; }
+  .lost__back-c--tl { top: -6px; left: -6px; border-width: 2px 0 0 2px; }
+  .lost__back-c--br { bottom: -6px; right: -6px; border-width: 0 2px 2px 0; }
+  .lost__back-icon {
+    display: grid; place-items: center; width: 36px; height: 36px; flex: none; color: var(--red);
+    border: 1px solid rgba(255,55,55,0.5); border-radius: 50%;
+    box-shadow: inset 0 0 12px rgba(255,55,55,0.25); animation: lost-pulse 1.6s ease-in-out infinite;
+  }
+  .lost__back-txt { display: grid; gap: 4px; text-align: left; }
+  .lost__back-txt small { font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.3em; color: var(--red); opacity: 0.85; }
+  .lost__back-txt b { position: relative; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 0.9; letter-spacing: 0.14em; }
+
+  .lost__back:hover, .lost__back:focus-visible { color: #050505; }
+  .lost__back:hover::after, .lost__back:focus-visible::after { background: var(--red); }
+  .lost__back:hover .lost__back-icon, .lost__back:focus-visible .lost__back-icon { color: #050505; border-color: #050505; box-shadow: none; }
+  .lost__back:hover small, .lost__back:focus-visible small { color: #050505; }
+  .lost__back:focus-visible { outline: none; }
+
+  .lost__back.is-ready { opacity: 1; pointer-events: auto; }
+  .lost__back.is-jump { animation: lost-jump 0.25s steps(2) 1; }
+  .lost__back.is-stuck { filter: drop-shadow(0 0 26px rgba(255,55,55,0.7)); }
+  .lost__back.is-stuck .lost__back-txt b { animation: mz-flicker 1.4s infinite; }
+
+  /* Screamer: monocromo y glitcheado */
+  .lost__scream {
+    --sx: 0px; --sk: 0deg;
+    position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px;
+    background: #000; opacity: 0; visibility: hidden; pointer-events: none; overflow: hidden;
+  }
+  .lost__scream::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.55) 0 2px, transparent 2px 4px);
+  }
+  .lost__scream.is-on { opacity: 1; visibility: visible; pointer-events: auto; animation: lost-bg 0.35s steps(1) infinite; }
+  .lost__scream > span {
+    position: relative; font-family: var(--f-display); font-weight: 800; line-height: 0.85; text-align: center;
+    font-size: clamp(64px, 17vw, 280px); color: #e6e6e6; text-transform: uppercase;
+    transform: scale(0.2);
+  }
+  .lost__scream.is-on > span { animation: lost-scream-in 0.16s cubic-bezier(.2,1.6,.4,1) forwards, lost-shake 0.07s steps(2) 0.16s infinite; }
+  .lost__scream > span::before, .lost__scream > span::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; }
+  .lost__scream > span::before { color: #fff; animation: lost-slice-a 0.24s steps(1) infinite; }
+  .lost__scream > span::after  { color: #4a4a4a; animation: lost-slice-b 0.3s steps(1) infinite; }
+  :global(html.mz-screaming .cursor) { display: none; }
+
+  @keyframes lost-noise { 0% { transform: translate(0,0); } 25% { transform: translate(-5%,3%); } 50% { transform: translate(4%,-4%); } 75% { transform: translate(-3%,-2%); } 100% { transform: translate(2%,5%); } }
+  @keyframes lost-ghost { 0% { transform: translate(-50%,-50%) translate(var(--gx,0), var(--gy,0)) scale(var(--gs,1)); } 50% { transform: translate(-50%,-50%) translate(calc(var(--gx,0) + 8px), calc(var(--gy,0) - 4px)) scale(var(--gs,1)); filter: grayscale(1) contrast(2) brightness(1.3) hue-rotate(-20deg); } 100% { transform: translate(-50%,-50%) translate(var(--gx,0), var(--gy,0)) scale(var(--gs,1)); } }
+  @keyframes lost-tear { 0%, 60% { opacity: 0; } 70% { opacity: 0.8; } 85% { opacity: 0.2; } 100% { opacity: 0; } }
+  @keyframes lost-shiver { 0% { translate: 0 0; } 50% { translate: -3px 1px; } 100% { translate: 2px -1px; } }
+  @keyframes lost-border { to { background-position: 200% 0; } }
+  @keyframes lost-sweep { 0%, 30% { background-position: -100% 0, 0 0, 0 0; } 70%, 100% { background-position: 220% 0, 0 0, 0 0; } }
+  @keyframes lost-pulse { 0%, 100% { box-shadow: inset 0 0 12px rgba(255,55,55,0.25), 0 0 0 0 rgba(255,55,55,0.45); } 50% { box-shadow: inset 0 0 12px rgba(255,55,55,0.25), 0 0 0 6px rgba(255,55,55,0); } }
+  @keyframes lost-jump { 0% { transform: translate(-6px,3px) scale(var(--s,1)); } 50% { transform: translate(5px,-3px) scale(var(--s,1)); } 100% { transform: scale(var(--s,1)); } }
+  @keyframes lost-scream-in { to { transform: scale(1); } }
+  @keyframes lost-shake { 0% { transform: translate(0,0) scale(1); } 25% { transform: translate(-8px,5px) scale(1.02); } 50% { transform: translate(7px,-6px) scale(0.99); } 75% { transform: translate(-5px,-4px) scale(1.03); } 100% { transform: translate(0,0) scale(1); } }
+  @keyframes lost-bg { 0% { background: #000; } 50% { background: #0e0e0e; } }
+  @keyframes lost-slice-a {
+    0%   { clip-path: inset(8% 0 70% 0);  transform: translate(calc(var(--sx) * -1), 0) skewX(var(--sk)); }
+    25%  { clip-path: inset(45% 0 30% 0); transform: translate(var(--sx), 0); }
+    50%  { clip-path: inset(70% 0 5% 0);  transform: translate(calc(var(--sx) * 2), 0) skewX(calc(var(--sk) * -1)); }
+    75%  { clip-path: inset(20% 0 55% 0); transform: translate(calc(var(--sx) * -2), 0); }
+  }
+  @keyframes lost-slice-b {
+    0%   { clip-path: inset(60% 0 20% 0); transform: translate(var(--sx), 3px); }
+    33%  { clip-path: inset(10% 0 80% 0); transform: translate(calc(var(--sx) * -1.5), -2px) skewX(var(--sk)); }
+    66%  { clip-path: inset(35% 0 40% 0); transform: translate(calc(var(--sx) * 1.5), 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(:root:not([data-motion='full'])) .lost__noise, :global(:root:not([data-motion='full'])) .lost__h, :global(:root:not([data-motion='full'])) .lost__tears i, :global(:root:not([data-motion='full'])) .lost__ghost.is-on, :global(:root:not([data-motion='full'])) .lost__back::before, :global(:root:not([data-motion='full'])) .lost__back::after, :global(:root:not([data-motion='full'])) .lost__back-icon, :global(:root:not([data-motion='full'])) .lost__scream.is-on, :global(:root:not([data-motion='full'])) .lost__scream.is-on > span, :global(:root:not([data-motion='full'])) .lost__scream > span::before, :global(:root:not([data-motion='full'])) .lost__scream > span::after { animation: none !important; }
+    :global(:root:not([data-motion='full'])) .lost__scream.is-on > span { transform: none; }
+    :global(:root:not([data-motion='full'])) .lost__ghost.is-on { opacity: 0.5; }
+  }
 </style>
