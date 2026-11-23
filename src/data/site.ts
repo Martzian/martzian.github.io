@@ -8,7 +8,15 @@ export const site = {
 
   // Último video destacado en la Home. Déjalo en null para mostrar el placeholder.
   // Ejemplo: { id: 'dQw4w9WgXcQ', title: { es: '...', en: '...' }, date: '2026-11-01', description: { es: '...', en: '...' } }
-  latestVideo: null as null | {
+  latestVideo: {
+    id: 'iafvZEwVeBQ',
+    title: { es: 'HASTA PRONTO...', en: 'SEE YOU SOON...' },
+    description: {
+      es: 'Un video diferente: por qué pongo en pausa todo lo relacionado a Martzian por un tiempo y qué pasó detrás de cámaras estos últimos meses.',
+      en: 'A different kind of video: why I’m putting everything Martzian on pause for a while, and what happened behind the scenes these past months.',
+    },
+    date: '2025-12-08T12:00:00',
+  } as null | {
     id: string;
     title: { es: string; en: string };
     description: { es: string; en: string };
