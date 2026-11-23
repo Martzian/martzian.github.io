@@ -25,9 +25,9 @@ export interface PublicArtist {
   experience: number | null;
   specialties: string[];
   bio: string | null;
-  portfolio: string;
+  portfolio: string | null;
   socials: string | null;
-  availability: string;
+  availability: string | null;
   avatarUrl: string | null;
 }
 
@@ -52,7 +52,6 @@ export class OfflineRegistryService implements RegistryService {
   }
 }
 
-const PUBLIC_COLUMNS = 'id, created_at, name, location, experience, specialties, bio, portfolio, socials, availability, avatar_url';
 const orNull = (v?: string) => (v && v.trim() ? v.trim() : null);
 
 export class SupabaseRegistryService implements RegistryService {
@@ -79,9 +78,10 @@ export class SupabaseRegistryService implements RegistryService {
   }
 
   async listPublic(): Promise<PublicArtist[]> {
-    const { data, error } = await this.db.from('artists').select(PUBLIC_COLUMNS).order('created_at', { ascending: false });
+    // La función respeta los interruptores de privacidad de cada artista (campos ocultos llegan como null)
+    const { data, error } = await this.db.rpc('list_public_artists');
     if (error) throw new Error('NETWORK');
-    return (data ?? []).map((r) => ({
+    return ((data ?? []) as Record<string, any>[]).map((r) => ({
       id: r.id, createdAt: r.created_at, name: r.name, location: r.location, experience: r.experience,
       specialties: r.specialties ?? [], bio: r.bio, portfolio: r.portfolio, socials: r.socials,
       availability: r.availability, avatarUrl: r.avatar_url,

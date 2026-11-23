@@ -1,78 +1,649 @@
 ---
-// Maqueta del área administrativa. NO es privada (GitHub Pages es estático):
-// no se indexa y no muestra datos reales. La versión real requiere autenticación + backend.
+// Overseer: consola privada para revisar el Artist Registry.
+// La página es estática y pública (no se indexa), pero NO contiene datos: todo se pide a
+// Supabase tras iniciar sesión, y las reglas RLS sólo devuelven registros a cuentas de la tabla `admins`.
+// En `npm run dev`, /overseer/?mock muestra la consola con datos falsos para trabajar el diseño
+// (ese modo no existe en el build de producción).
 import Base from '../layouts/Base.astro';
 import type { Lang } from '../data/site';
 import { ui } from '../i18n/ui';
+import { specialties, availability, experience } from '../data/registry';
+import { registryService } from '../lib/registry-service';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = ui[lang].overseer;
-const rows: [string, string, keyof typeof t.st][] = [
-  ['ARTIST SLOT 01', '3D Modeling · Texturing', 'NEW'], ['ARTIST SLOT 02', 'Concept Art', 'NEW'],
-  ['ARTIST SLOT 03', 'Rigging · Animation', 'REV'], ['ARTIST SLOT 04', 'Environment Art', 'REV'],
-  ['ARTIST SLOT 05', 'VFX · Motion Graphics', 'OK'], ['ARTIST SLOT 06', 'Sound Design', 'CON'],
-];
+const STATUSES = ['new', 'review', 'approved', 'contacted', 'rejected'] as const;
+const ACTIONS = ['approved', 'review', 'contacted', 'rejected', 'new'] as const;
+const connected = registryService.connected;
+const i18n = {
+  st: t.st, act: t.act, f: t.f,
+  specs: Object.fromEntries(specialties.map((s) => [s.id, s.label[lang]])),
+  avail: Object.fromEntries(availability.map((a) => [a.id, a.label[lang]])),
+  exp: experience.map((e) => e[lang]),
+  errLogin: t.errLogin, errNotAdmin: t.errNotAdmin, errLoad: t.errLoad, errSave: t.errSave,
+  loggingIn: t.loggingIn, login: t.login, empty: t.empty, saved: t.saved, saveNotes: t.saveNotes,
+  del: t.del, delConfirm: t.delConfirm, locale: lang === 'es' ? 'es-MX' : 'en-US',
+};
+const icon = {
+  search: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm9 16-4.2-4.2',
+  refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  download: 'M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14',
+  mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  ext: 'M14 5h5v5M19 5l-8 8M17 14v5H5V7h5',
+  trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
+  lock: 'M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z',
+};
 ---
 <Base lang={lang} slug="overseer" title={t.title} description={t.description} noindex>
-  <div class="console">
-    <nav class="console__side" aria-label="Overseer">
-      <p class="console__brand">OVERSEER</p>
-      {t.menu.map((m, i) => <span class:list={['console__item mono', { on: i === 0 }]}>{m}{i === 0 && <b>[N]</b>}</span>)}
-      <div class="console__lock mono">{t.restrictedK}<br />{t.restrictedP}</div>
-    </nav>
-    <section class="console__main">
-      <p class="kicker" style="font-size:11px">{t.kicker}</p>
-      <h1>{t.h1}</h1>
-      <div class="console__stats">{t.stats.map((s, i) => <div><span class="mono">{s}</span><b style={i === 0 ? 'color:var(--red)' : ''}>[N]</b></div>)}</div>
-      <div class="console__body">
-        <div class="console__table">
-          <table>
-            <thead><tr>{t.th.map((h) => <th class="mono">{h}</th>)}</tr></thead>
-            <tbody>
-              {rows.map(([n, s, st], i) => (
-                <tr class:list={{ sel: i === 0 }}><td><span class="av"></span>{n}</td><td class="muted">{s}</td><td class="mono muted">[DD.MM]</td><td><span class="st mono" data-st={st}>{t.st[st]}</span></td></tr>
-              ))}
-            </tbody>
-          </table>
+  <div class="ov" data-ov data-i18n={JSON.stringify(i18n)}>
+    <div class="ov__grid" aria-hidden="true"></div>
+
+    <!-- ============ ACCESO ============ -->
+    <section class="gate" data-view="login" hidden>
+      <form class="gate__box" data-login>
+        <div class="gate__head">
+          <span class="gate__lock"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d={icon.lock} /></svg></span>
+          <p class="kicker">{t.loginK}</p>
         </div>
-        <aside class="console__profile">
-          <p class="console__pname">ARTIST SLOT 01</p>
-          <p class="mono muted" style="font-size:11px">{t.mail}</p>
-          <p class="muted" style="font-size:13px;line-height:1.6">{t.profileP}</p>
-          <div class="console__actions"><button class="btn btn--solid btn--sm" disabled>{t.contact}</button><button class="btn btn--ghost btn--sm" disabled>{t.approve}</button></div>
+        <h1 class="gate__title">OVERSEER</h1>
+        <p class="gate__p">{t.loginP}</p>
+        <div class="field">
+          <label class="lab" for="ov-mail">{t.email}</label>
+          <input id="ov-mail" class="in" type="email" name="email" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label class="lab" for="ov-pass">{t.password}</label>
+          <input id="ov-pass" class="in" type="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn--solid" data-login-btn>{t.login}</button>
+        <p class="ov__err mono" data-login-err aria-live="polite"></p>
+      </form>
+    </section>
+
+    {!connected && (
+      <section class="gate" data-offline><div class="gate__box"><p class="kicker">{t.loginK}</p><p class="gate__p">{t.offline}</p></div></section>
+    )}
+
+    <!-- ============ CONSOLA ============ -->
+    <div class="console" data-view="console" hidden>
+      <header class="console__top">
+        <div>
+          <p class="kicker">{t.kicker}</p>
+          <h1 class="console__title">{t.h1}</h1>
+        </div>
+        <div class="console__session">
+          <span class="console__who mono"><span class="dot dot--pulse"></span><span data-who></span></span>
+          <button type="button" class="btn btn--ghost btn--sm" data-logout>{t.logout}</button>
+        </div>
+      </header>
+
+      <!-- Resumen: cada tarjeta filtra la lista -->
+      <div class="stats" role="group" aria-label={t.filters}>
+        <button type="button" class="stat stat--all" data-filter="all" aria-pressed="true">
+          <span class="stat__label mono">{t.total}</span>
+          <b class="stat__n" data-count="all">0</b>
+        </button>
+        {STATUSES.map((s) => (
+          <button type="button" class="stat" data-filter={s} data-st={s} aria-pressed="false">
+            <span class="stat__label mono"><i class="sdot"></i>{t.st[s]}</span>
+            <b class="stat__n" data-count={s}>0</b>
+            <span class="stat__bar"><span data-bar={s}></span></span>
+          </button>
+        ))}
+      </div>
+
+      <div class="console__body" data-body>
+        <!-- Lista -->
+        <section class="list">
+          <div class="list__tools">
+            <label class="search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d={icon.search} /></svg>
+              <input type="search" placeholder={t.search} aria-label={t.search} data-q />
+            </label>
+            <button type="button" class="tool" data-refresh title={t.refresh} aria-label={t.refresh}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d={icon.refresh} /></svg>
+            </button>
+            <button type="button" class="tool" data-export title={t.export} aria-label={t.export}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d={icon.download} /></svg>
+            </button>
+          </div>
+          <div class="list__head mono" aria-hidden="true"><span>{t.th[0]}</span><span>{t.th[1]}</span><span>{t.th[2]}</span><span>{t.th[3]}</span></div>
+          <ul class="list__rows" data-rows></ul>
+          <p class="list__msg mono" data-msg>{t.loading}</p>
+          <p class="list__hint mono">{t.publicHint}</p>
+        </section>
+
+        <!-- Ficha -->
+        <aside class="sheet" data-profile aria-live="polite">
+          <div class="sheet__empty" data-pick>
+            <span class="sheet__ring" aria-hidden="true"></span>
+            <p>{t.pick}</p>
+          </div>
+
+          <div class="sheet__card" data-detail hidden>
+            <button type="button" class="sheet__back mono" data-back>{t.back}</button>
+            <div class="sheet__head">
+              <span class="avatar avatar--lg" data-d="avatar"></span>
+              <div class="sheet__id">
+                <span class="pill mono" data-d="status"><i class="sdot"></i><span data-d="statusLabel"></span></span>
+                <p class="sheet__name" data-d="name"></p>
+                <a class="sheet__mail mono" data-d="email"></a>
+              </div>
+            </div>
+
+            <div class="sheet__tags" data-d="specs"></div>
+
+            <dl class="facts">
+              <div><dt class="mono">{t.f.loc}</dt><dd data-d="location"></dd></div>
+              <div><dt class="mono">{t.f.exp}</dt><dd data-d="experience"></dd></div>
+              <div><dt class="mono">{t.f.avail}</dt><dd data-d="availability"></dd></div>
+              <div><dt class="mono">{t.f.date}</dt><dd data-d="date"></dd></div>
+            </dl>
+
+            <a class="sheet__port" data-d="portfolio" target="_blank" rel="noopener nofollow">
+              <span class="mono">{t.f.port}</span>
+              <span class="sheet__url" data-d="portfolioUrl"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d={icon.ext} /></svg>
+            </a>
+
+            <div class="sheet__text" data-block="socials"><p class="mono">{t.f.soc}</p><p data-d="socials"></p></div>
+            <div class="sheet__text" data-block="bio"><p class="mono">{t.f.bio}</p><p data-d="bio"></p></div>
+            <div class="sheet__text" data-block="additional"><p class="mono">{t.f.more}</p><p data-d="additional"></p></div>
+
+            <div class="sheet__section">
+              <p class="mono sheet__label">{t.setStatus}</p>
+              <div class="seg" role="group" aria-label={t.setStatus}>
+                {ACTIONS.map((s) => (
+                  <button type="button" class="seg__btn mono" data-set={s} data-st={s} aria-pressed="false"><i class="sdot"></i>{t.act[s]}</button>
+                ))}
+              </div>
+            </div>
+
+            <div class="sheet__section">
+              <label class="mono sheet__label" for="ov-notes">{t.notes}</label>
+              <textarea id="ov-notes" class="in" rows="3" placeholder={t.notesPh} data-notes></textarea>
+              <button type="button" class="btn btn--ghost btn--sm sheet__save" data-save-notes>{t.saveNotes}</button>
+            </div>
+
+            <div class="sheet__foot">
+              <a class="btn btn--solid btn--sm" data-mailto>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d={icon.mail} /></svg>{t.contact}
+              </a>
+              <button type="button" class="sheet__del mono" data-delete>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d={icon.trash} /></svg><span>{t.del}</span>
+              </button>
+            </div>
+            <p class="ov__err mono" data-detail-err aria-live="polite"></p>
+          </div>
         </aside>
       </div>
-    </section>
+    </div>
   </div>
 </Base>
 
 <style>
-  .console { display: flex; flex-wrap: wrap; min-height: 80vh; }
-  .console__side { flex: 1 1 240px; max-width: 280px; padding: 28px 20px; border-right: 1px solid var(--line-soft); background: #0b0c0d; display: flex; flex-direction: column; gap: 6px; }
-  .console__brand { font-family: var(--f-display); font-weight: 700; font-size: 18px; letter-spacing: 0.28em; padding: 0 8px 24px; }
-  .console__item { display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid transparent; font-size: 12px; color: var(--muted); }
-  .console__item.on { background: var(--black-red); border-color: var(--blood); color: var(--white); }
-  .console__item b { font-weight: 400; color: var(--red); }
-  .console__lock { margin-top: auto; padding: 16px 12px; border: 1px solid var(--line-strong); font-size: 10px; line-height: 1.7; color: var(--muted); text-transform: none; letter-spacing: 0.08em; }
-  .console__main { flex: 999 1 640px; min-width: 0; padding: 36px var(--gutter); }
-  .console__main h1 { margin-top: 10px; font-size: clamp(44px, 5vw, 64px); }
-  .console__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 32px; background: var(--line-soft); border: 1px solid var(--line-soft); }
-  .console__stats div { background: var(--panel); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-  .console__stats span { font-size: 10px; color: var(--muted); }
-  .console__stats b { font-family: var(--f-display); font-size: 40px; }
-  .console__body { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 28px; align-items: flex-start; }
-  .console__table { flex: 999 1 520px; min-width: 0; overflow-x: auto; border: 1px solid var(--line); }
-  table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
-  th { background: var(--panel); padding: 14px 16px; font-weight: 500; font-size: 10px; color: var(--muted); text-align: left; }
-  td { padding: 14px 16px; border-top: 1px solid rgba(113, 128, 140, 0.15); }
-  tr.sel { background: rgba(165, 31, 36, 0.12); }
-  td:first-child { display: flex; align-items: center; gap: 12px; }
-  .av { width: 32px; height: 32px; border-radius: 50%; background: var(--metal); }
-  .st { padding: 4px 8px; border: 1px solid currentColor; font-size: 10px; color: var(--muted); }
-  .st[data-st='NEW'] { color: var(--red); } .st[data-st='REV'] { color: var(--white); }
-  .console__profile { flex: 1 1 300px; border: 1px solid var(--blood); background: var(--black-red); padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-  .console__pname { font-family: var(--f-display); font-weight: 700; font-size: 26px; }
-  .console__actions { display: flex; gap: 10px; }
-  @media (max-width: 760px) { .console__side { max-width: none; border-right: 0; border-bottom: 1px solid var(--line-soft); } .console__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  [hidden] { display: none !important; }
+
+  /* Colores por estado */
+  .ov :global([data-st='new']) { --c: var(--red); }
+  .ov :global([data-st='review']) { --c: #f5b942; }
+  .ov :global([data-st='approved']) { --c: #4ade80; }
+  .ov :global([data-st='contacted']) { --c: #60a5fa; }
+  .ov :global([data-st='rejected']) { --c: #6b7680; }
+  .ov :global(.sdot) { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--steel)); box-shadow: 0 0 8px var(--c, transparent); flex: none; }
+
+  .ov { position: relative; isolation: isolate; min-height: 80vh; }
+  .ov__grid {
+    position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.5;
+    background-image: linear-gradient(rgba(113, 128, 140, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(113, 128, 140, 0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000, transparent 75%);
+  }
+  .ov__err { min-height: 1em; font-size: 11px; letter-spacing: 0.06em; color: var(--red); text-transform: none; }
+  .ov__err:empty { display: none; }
+
+  .lab { display: block; margin-bottom: 8px; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--muted); }
+  .in {
+    width: 100%; min-height: 46px; padding: 11px 14px; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(113, 128, 140, 0.3);
+    color: var(--white); font-family: var(--f-body); font-size: 15px; outline: none; transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  }
+  .in:focus { border-color: rgba(255, 55, 55, 0.7); background: rgba(255, 255, 255, 0.05); box-shadow: 0 0 0 4px rgba(255, 55, 55, 0.12); }
+  textarea.in { resize: vertical; line-height: 1.5; }
+
+  /* ---------- Acceso ---------- */
+  .gate { min-height: 76vh; display: grid; place-items: center; padding: 56px var(--gutter); }
+  .gate__box {
+    width: min(420px, 100%); display: flex; flex-direction: column; gap: 18px; padding: 36px;
+    border-radius: 24px; border: 1px solid rgba(113, 128, 140, 0.22);
+    background: linear-gradient(180deg, rgba(22, 9, 11, 0.85), rgba(10, 10, 11, 0.9));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .gate__head { display: flex; align-items: center; gap: 12px; }
+  .gate__head .kicker { font-size: 11px; }
+  .gate__lock { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--red); background: rgba(255, 55, 55, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 55, 55, 0.35); }
+  .gate__title { font-size: clamp(48px, 9vw, 68px); letter-spacing: 0.1em; }
+  .gate__p { margin-top: -6px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+  .gate__box .btn { margin-top: 6px; width: 100%; }
+
+  /* ---------- Consola ---------- */
+  .console { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 36px var(--gutter) 96px; }
+  .console__top { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .console__top .kicker { font-size: 11px; }
+  .console__title { margin-top: 10px; font-size: clamp(40px, 5vw, 64px); }
+  .console__session { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .console__who { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 0.06em; text-transform: none; color: var(--muted-2); overflow-wrap: anywhere; }
+  .console__who .dot { background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+
+  /* Tarjetas de resumen */
+  .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 32px; }
+  .stat {
+    position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 16px; text-align: left; cursor: pointer;
+    border-radius: 18px; border: 1px solid rgba(113, 128, 140, 0.18); background: rgba(14, 15, 17, 0.85); color: inherit;
+    transition: border-color 0.25s, background-color 0.25s, transform 0.3s var(--ease);
+  }
+  .stat:hover { transform: translateY(-2px); border-color: rgba(113, 128, 140, 0.4); }
+  .stat[aria-pressed='true'] { border-color: var(--c, var(--white)); background: color-mix(in srgb, var(--c, #fff) 8%, rgba(14, 15, 17, 0.9)); }
+  .stat__label { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.16em; color: var(--muted); }
+  .stat__n { font-family: var(--f-display); font-weight: 700; font-size: 44px; line-height: 0.9; color: var(--white); }
+  .stat[data-st='new'] .stat__n { color: var(--red); }
+  .stat__bar { height: 3px; border-radius: 3px; background: rgba(113, 128, 140, 0.15); overflow: hidden; }
+  .stat__bar span { display: block; height: 100%; width: 0; background: var(--c); border-radius: inherit; transition: width 0.6s var(--ease); }
+  .stat--all { background: linear-gradient(160deg, rgba(165, 31, 36, 0.22), rgba(14, 15, 17, 0.9) 70%); }
+
+  /* Cuerpo */
+  .console__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 420px); gap: 24px; margin-top: 24px; align-items: start; }
+
+  /* Lista */
+  .list { min-width: 0; border-radius: 22px; border: 1px solid rgba(113, 128, 140, 0.18); background: rgba(12, 13, 14, 0.85); overflow: hidden; }
+  .list__tools { display: flex; gap: 8px; padding: 14px; border-bottom: 1px solid rgba(113, 128, 140, 0.14); }
+  .search { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(113, 128, 140, 0.22); color: var(--steel); transition: border-color 0.2s; }
+  .search:focus-within { border-color: rgba(255, 55, 55, 0.6); }
+  .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--white); font: inherit; font-size: 14px; }
+  .search input::placeholder { color: #6f7b85; }
+  .tool { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(113, 128, 140, 0.25); background: rgba(255, 255, 255, 0.03); color: var(--muted-2); cursor: pointer; transition: color 0.2s, border-color 0.2s, background-color 0.2s; }
+  .tool:hover { color: var(--white); border-color: var(--white); background: rgba(255, 255, 255, 0.07); }
+  .tool.spin svg { animation: ov-spin 0.8s linear; }
+  @keyframes ov-spin { to { transform: rotate(360deg); } }
+
+  .list__head, :global(.row) { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 2fr) 80px 128px; gap: 16px; align-items: center; }
+  .list__head { padding: 12px 20px; font-size: 10px; letter-spacing: 0.16em; color: var(--steel); border-bottom: 1px solid rgba(113, 128, 140, 0.1); }
+  .list__rows { margin: 0; padding: 6px; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .list__rows :global(.row) {
+    position: relative; padding: 12px 14px; border-radius: 14px; cursor: pointer; transition: background-color 0.15s;
+  }
+  .list__rows :global(.row:hover) { background: rgba(255, 255, 255, 0.035); }
+  .list__rows :global(.row.sel) { background: rgba(165, 31, 36, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 55, 55, 0.3); }
+  .list__rows :global(.row:focus-visible) { outline: 2px solid var(--red); outline-offset: -2px; }
+  .list__rows :global(.row__who) { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .list__rows :global(.row__name) { font-weight: 500; font-size: 14px; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list__rows :global(.row__mail) { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list__rows :global(.row__tags) { display: flex; gap: 6px; min-width: 0; overflow: hidden; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .list__rows :global(.row__date) { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+  :global(.row__text) { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+  :global(.tag) { flex: none; padding: 4px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(113, 128, 140, 0.22); font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--muted-2); white-space: nowrap; }
+  :global(.tag--more) { color: var(--steel); }
+
+  :global(.avatar) {
+    --av: #a51f24; width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 50%;
+    font-family: var(--f-display); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; color: #fff;
+    background: radial-gradient(circle at 30% 25%, var(--av), color-mix(in srgb, var(--av) 25%, #0b0b0c) 85%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .avatar--lg { width: 64px; height: 64px; font-size: 24px; }
+
+  :global(.pill) { display: inline-flex; align-items: center; gap: 7px; justify-self: start; padding: 5px 11px; border-radius: 999px; font-size: 10px; letter-spacing: 0.12em; white-space: nowrap; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent); }
+
+  .list__msg { padding: 48px 20px; text-align: center; font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
+  .list__msg:empty { display: none; }
+  .list__hint { padding: 14px 20px; border-top: 1px solid rgba(113, 128, 140, 0.1); font-size: 10px; letter-spacing: 0.06em; text-transform: none; color: var(--steel); }
+
+  /* Ficha */
+  .sheet { position: sticky; top: 20px; min-width: 0; border-radius: 22px; border: 1px solid rgba(113, 128, 140, 0.18); background: linear-gradient(180deg, rgba(22, 9, 11, 0.9), rgba(12, 13, 14, 0.92) 40%); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45); max-height: calc(100vh - 40px); overflow: auto; scrollbar-width: thin; }
+  .sheet__empty { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 64px 32px; text-align: center; font-size: 14px; line-height: 1.6; color: var(--muted); }
+  .sheet__ring { width: 72px; height: 72px; border-radius: 50%; border: 1px dashed rgba(113, 128, 140, 0.5); box-shadow: inset 0 0 0 12px rgba(165, 31, 36, 0.08); }
+  .sheet__card { display: flex; flex-direction: column; gap: 20px; padding: 26px; }
+  .sheet__back { display: none; align-self: flex-start; padding: 0; background: none; border: 0; color: var(--muted-2); font-size: 11px; cursor: pointer; }
+  .sheet__head { display: flex; gap: 16px; align-items: center; }
+  .sheet__id { min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .sheet__name { font-family: var(--f-display); font-weight: 700; font-size: 32px; line-height: 0.95; letter-spacing: 0.02em; overflow-wrap: anywhere; }
+  .sheet__mail { font-size: 12px; letter-spacing: 0.02em; text-transform: none; color: var(--muted-2); overflow-wrap: anywhere; }
+  .sheet__mail:hover { color: var(--red); }
+  .sheet__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sheet__tags:empty { display: none; }
+
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0; border-radius: 14px; overflow: hidden; background: rgba(113, 128, 140, 0.14); border: 1px solid rgba(113, 128, 140, 0.14); }
+  .facts div { padding: 12px 14px; background: rgba(12, 13, 14, 0.95); min-width: 0; }
+  .facts dt { font-size: 9px; letter-spacing: 0.16em; color: var(--steel); margin-bottom: 4px; }
+  .facts dd { margin: 0; font-size: 13px; color: var(--white); overflow-wrap: anywhere; }
+  .facts dd:empty::after { content: '—'; color: var(--steel); }
+
+  .sheet__port {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(113, 128, 140, 0.22); color: var(--white); transition: border-color 0.2s, background-color 0.2s;
+  }
+  .sheet__port:hover { border-color: var(--red); background: rgba(255, 55, 55, 0.06); color: var(--white); }
+  .sheet__port .mono { font-size: 10px; letter-spacing: 0.16em; color: var(--steel); }
+  .sheet__url { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sheet__port svg { color: var(--red); }
+
+  .sheet__text .mono, .sheet__label { display: block; margin-bottom: 8px; font-size: 10px; letter-spacing: 0.16em; color: var(--steel); }
+  .sheet__text p:last-child { font-size: 14px; line-height: 1.6; color: var(--muted-2); white-space: pre-line; overflow-wrap: anywhere; }
+  .sheet__section { display: flex; flex-direction: column; padding-top: 18px; border-top: 1px solid rgba(113, 128, 140, 0.14); }
+  .sheet__save { align-self: flex-start; margin-top: 10px; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg__btn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 13px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(113, 128, 140, 0.25); background: rgba(255, 255, 255, 0.02); color: var(--muted-2); font-size: 10px; letter-spacing: 0.1em;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+  }
+  .seg__btn:hover { border-color: var(--c); color: var(--white); }
+  .seg__btn[aria-pressed='true'] { border-color: var(--c); color: var(--white); background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--c) 25%, transparent); }
+
+  .sheet__foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid rgba(113, 128, 140, 0.14); }
+  .sheet__del { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 10px; letter-spacing: 0.12em; cursor: pointer; transition: color 0.2s, border-color 0.2s, background-color 0.2s; }
+  .sheet__del:hover { color: var(--red); border-color: rgba(255, 55, 55, 0.4); }
+  .sheet__del.armed { color: #fff; background: rgba(255, 55, 55, 0.25); border-color: var(--red); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1280px) {
+    .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .list__head, :global(.row) { grid-template-columns: minmax(0, 1fr) 72px 120px; }
+    .list__head span:nth-child(2), .list__rows :global(.row__tags) { display: none; }
+  }
+  @media (max-width: 960px) {
+    .console__body { grid-template-columns: 1fr; }
+    /* La ficha pasa a ocupar la pantalla al seleccionar */
+    .sheet { display: none; position: static; max-height: none; }
+    .console__body.has-sel .sheet { display: block; }
+    .console__body.has-sel .list { display: none; }
+    .sheet__back { display: inline-block; }
+  }
+  @media (max-width: 560px) {
+    .console { padding-top: 24px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .stat { padding: 14px; border-radius: 14px; }
+    .stat__n { font-size: 34px; }
+    .list__head { display: none; }
+    .list__head, :global(.row) { grid-template-columns: minmax(0, 1fr) auto; }
+    .list__rows :global(.row__date) { display: none; }
+    .facts { grid-template-columns: 1fr; }
+    .sheet__card { padding: 20px; }
+    .sheet__foot { flex-direction: column-reverse; align-items: stretch; }
+    .sheet__foot .btn { width: 100%; }
+  }
 </style>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  type Status = 'new' | 'review' | 'approved' | 'contacted' | 'rejected';
+  interface Row {
+    id: string; created_at: string; status: Status; name: string; email: string; location: string | null;
+    experience: number | null; specialties: string[]; bio: string | null; portfolio: string; socials: string | null;
+    availability: string; additional: string | null; admin_notes: string | null;
+  }
+  interface Api {
+    list(): Promise<Row[]>;
+    update(id: string, patch: Partial<Row>): Promise<boolean>;
+    remove(id: string): Promise<boolean>;
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-ov]')!;
+  const T = JSON.parse(root.dataset.i18n!);
+  const $ = <E extends HTMLElement = HTMLElement>(sel: string, el: ParentNode = root) => el.querySelector<E>(sel)!;
+  const $$ = <E extends HTMLElement = HTMLElement>(sel: string, el: ParentNode = root) => [...el.querySelectorAll<E>(sel)];
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = '') => {
+    const n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n;
+  };
+
+  const views = { login: $('[data-view="login"]'), console: $('[data-view="console"]') };
+  const show = (v: 'login' | 'console') => { views.login.hidden = v !== 'login'; views.console.hidden = v !== 'console'; };
+
+  /* ---------- Consola (independiente de la fuente de datos) ---------- */
+  const startConsole = (api: Api, who: string) => {
+    let rows: Row[] = [];
+    let filter: 'all' | Status = 'all';
+    let selected: string | null = null;
+    const body = $('[data-body]');
+    const msg = $('[data-msg]');
+    const q = $<HTMLInputElement>('[data-q]');
+    const det = $('[data-detail]');
+    const d = (k: string) => $(`[data-d="${k}"]`, det);
+
+    $('[data-who]').textContent = who;
+    show('console');
+
+    const specs = (r: Row) => r.specialties.map((id) => T.specs[id] ?? id);
+    const fmtDate = (iso: string, long = false) =>
+      new Date(iso).toLocaleDateString(T.locale, long ? { day: '2-digit', month: 'long', year: 'numeric' } : { day: '2-digit', month: 'short' });
+    const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+    // Tonos acordes al sitio (rojos, metales y fríos); cada nombre cae siempre en el mismo
+    const TONES = ['#a51f24', '#d0453f', '#71808c', '#4b6a88', '#7a5c8f', '#3f7f78', '#9a6a3a'];
+    const tone = (s: string) => TONES[[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % TONES.length];
+    const avatar = (node: HTMLElement, name: string) => { node.textContent = initials(name); node.style.setProperty('--av', tone(name)); };
+    const pill = (status: Status) => {
+      const p = el('span', 'pill mono'); p.dataset.st = status;
+      p.append(el('i', 'sdot'), el('span', '', T.st[status]));
+      return p;
+    };
+
+    const load = async () => {
+      const btn = $('[data-refresh]');
+      btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
+      try {
+        rows = await api.list();
+        render();
+        detail(rows.find((r) => r.id === selected) ?? null);
+      } catch { msg.textContent = T.errLoad; }
+    };
+
+    const update = async (id: string, patch: Partial<Row>) => {
+      const err = $('[data-detail-err]'); err.textContent = '';
+      if (!(await api.update(id, patch))) { err.textContent = T.errSave; return false; }
+      const r = rows.find((x) => x.id === id);
+      if (r) Object.assign(r, patch);
+      render(); if (r) detail(r);
+      return true;
+    };
+
+    const select = (id: string | null) => {
+      selected = id;
+      body.classList.toggle('has-sel', !!id);
+      render();
+      detail(rows.find((r) => r.id === id) ?? null);
+      if (id && matchMedia('(max-width: 960px)').matches) body.scrollIntoView({ block: 'start' });
+    };
+
+    /* Lista */
+    const render = () => {
+      const counts: Record<string, number> = { all: rows.length };
+      rows.forEach((r) => { counts[r.status] = (counts[r.status] ?? 0) + 1; });
+      $$('[data-count]').forEach((b) => { b.textContent = String(counts[b.dataset.count!] ?? 0); });
+      $$('[data-bar]').forEach((b) => { b.style.width = rows.length ? `${((counts[b.dataset.bar!] ?? 0) / rows.length) * 100}%` : '0'; });
+      $$('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
+
+      const term = q.value.trim().toLowerCase();
+      const list = rows.filter((r) => (filter === 'all' || r.status === filter)
+        && (!term || [r.name, r.email, r.location ?? '', ...specs(r)].join(' ').toLowerCase().includes(term)));
+
+      $('[data-rows]').replaceChildren(...list.map((r) => {
+        const li = el('li', 'row'); li.tabIndex = 0; li.classList.toggle('sel', r.id === selected);
+        const who = el('div', 'row__who');
+        const av = el('span', 'avatar'); avatar(av, r.name);
+        const text = el('div', 'row__text');
+        text.append(el('span', 'row__name', r.name), el('span', 'row__mail', r.email));
+        who.append(av, text);
+        const tags = el('div', 'row__tags');
+        const sp = specs(r);
+        sp.slice(0, 2).forEach((s) => tags.append(el('span', 'tag', s)));
+        if (sp.length > 2) tags.append(el('span', 'tag tag--more', `+${sp.length - 2}`));
+        li.append(who, tags, el('span', 'row__date', fmtDate(r.created_at)), pill(r.status));
+        li.addEventListener('click', () => select(r.id));
+        li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(r.id); } });
+        return li;
+      }));
+      msg.textContent = list.length ? '' : T.empty;
+    };
+    q.addEventListener('input', render);
+    $$('[data-filter]').forEach((b) => b.addEventListener('click', () => { filter = b.dataset.filter as typeof filter; render(); }));
+    $('[data-refresh]').addEventListener('click', load);
+
+    /* Ficha */
+    let delArmed = false;
+    const detail = (r: Row | null) => {
+      $('[data-pick]').hidden = !!r;
+      det.hidden = !r;
+      if (!r) return;
+      avatar(d('avatar'), r.name);
+      d('status').dataset.st = r.status; d('statusLabel').textContent = T.st[r.status];
+      d('name').textContent = r.name;
+      const mail = d('email') as HTMLAnchorElement; mail.textContent = r.email; mail.href = `mailto:${r.email}`;
+      d('specs').replaceChildren(...specs(r).map((s) => el('span', 'tag', s)));
+      d('location').textContent = r.location ?? '';
+      d('experience').textContent = r.experience != null ? T.exp[r.experience] ?? '' : '';
+      d('availability').textContent = T.avail[r.availability] ?? r.availability;
+      d('date').textContent = fmtDate(r.created_at, true);
+      (d('portfolio') as HTMLAnchorElement).href = /^https?:\/\//i.test(r.portfolio) ? r.portfolio : '#';
+      d('portfolioUrl').textContent = r.portfolio.replace(/^https?:\/\/(www\.)?/i, '');
+      for (const k of ['socials', 'bio', 'additional'] as const) {
+        d(k).textContent = r[k] ?? '';
+        $(`[data-block="${k}"]`, det).hidden = !r[k];
+      }
+      $$('[data-set]', det).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === r.status)));
+      $<HTMLTextAreaElement>('[data-notes]', det).value = r.admin_notes ?? '';
+      ($('[data-mailto]', det) as HTMLAnchorElement).href = `mailto:${r.email}?subject=${encodeURIComponent('Martzian · Artist Registry')}`;
+      const del = $('[data-delete]', det); delArmed = false; del.classList.remove('armed'); $('span', del).textContent = T.del;
+      $('[data-detail-err]').textContent = '';
+    };
+
+    $('[data-back]').addEventListener('click', () => select(null));
+    $$('[data-set]', det).forEach((b) => b.addEventListener('click', () => { if (selected) update(selected, { status: b.dataset.set as Status }); }));
+
+    $('[data-save-notes]', det).addEventListener('click', async (e) => {
+      if (!selected) return;
+      const btn = e.currentTarget as HTMLButtonElement;
+      const notes = $<HTMLTextAreaElement>('[data-notes]', det).value.trim();
+      if (await update(selected, { admin_notes: notes || null })) {
+        btn.textContent = T.saved;
+        setTimeout(() => { btn.textContent = T.saveNotes; }, 1600);
+      }
+    });
+
+    // Borrado en dos pasos (sin diálogos del navegador)
+    $('[data-delete]', det).addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const label = $('span', btn);
+      if (!selected) return;
+      if (!delArmed) {
+        delArmed = true; btn.classList.add('armed'); label.textContent = T.delConfirm;
+        setTimeout(() => { if (delArmed) { delArmed = false; btn.classList.remove('armed'); label.textContent = T.del; } }, 4000);
+        return;
+      }
+      if (!(await api.remove(selected))) { $('[data-detail-err]').textContent = T.errSave; return; }
+      rows = rows.filter((r) => r.id !== selected);
+      select(null);
+    });
+
+    /* Exportar CSV */
+    $('[data-export]').addEventListener('click', () => {
+      const cols: (keyof Row)[] = ['created_at', 'status', 'name', 'email', 'location', 'experience', 'specialties', 'availability', 'portfolio', 'socials', 'bio', 'additional', 'admin_notes'];
+      const cell = (v: unknown) => {
+        let s = Array.isArray(v) ? v.join(' | ') : v == null ? '' : String(v);
+        if (/^[=+\-@]/.test(s)) s = `'${s}`; // evita fórmulas al abrirlo en Excel
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const csv = [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = `martzian-registry-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    return { load, reset: () => { rows = []; select(null); } };
+  };
+
+  /* ---------- Modo demostración (sólo en `npm run dev`, con ?mock) ---------- */
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('mock')) {
+    const now = Date.now();
+    const sample = (i: number, name: string, status: Status, specialties: string[], extra: Partial<Row> = {}): Row => ({
+      id: String(i), created_at: new Date(now - i * 86400000 * 1.7).toISOString(), status, name,
+      email: `${name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z]+/g, '.')}@example.com`, location: 'Ciudad de México, MX', experience: i % 4,
+      specialties, bio: 'Artista 3D enfocado en personajes estilizados y entornos para videojuegos indie.', portfolio: 'https://www.artstation.com/example',
+      socials: '@example · instagram.com/example', availability: ['now', 'free', 'part', 'none'][i % 4], additional: null, admin_notes: null, ...extra,
+    });
+    let mock: Row[] = [
+      sample(1, 'Valeria Ríos', 'new', ['model', 'tex', 'char'], { additional: 'Blender, Substance Painter, ZBrush. Inglés fluido.' }),
+      sample(2, 'Diego Fernández', 'new', ['anim', 'rig']),
+      sample(3, 'Kaori Tanaka', 'review', ['concept', 'char', 'env', 'vfx']),
+      sample(4, 'Lucas Moreau', 'approved', ['env']),
+      sample(5, 'Sofía Herrera', 'contacted', ['motion', 'edit'], { admin_notes: 'Encaja para el próximo video del canal.' }),
+      sample(6, 'Mateo Silva', 'rejected', ['sound']),
+      sample(7, 'Ana Lucía Paredes', 'approved', ['game', 'model']),
+    ];
+    startConsole({
+      list: async () => mock.map((r) => ({ ...r })),
+      update: async (id, patch) => { mock = mock.map((r) => (r.id === id ? { ...r, ...patch } : r)); return true; },
+      remove: async (id) => { mock = mock.filter((r) => r.id !== id); return true; },
+    }, 'demo@martzian.local').load().then(() => {
+      const sel = new URLSearchParams(location.search).get('sel'); // ?mock&sel=1 abre una ficha (para capturas)
+      if (sel) $<HTMLElement>(`[data-rows] .row:nth-child(${sel})`)?.click();
+    });
+  } else if (supabase) {
+    /* ---------- Supabase ---------- */
+    const db = supabase;
+    const api: Api = {
+      list: async () => {
+        const { data, error } = await db.from('artists').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data ?? []) as Row[];
+      },
+      update: async (id, patch) => !(await db.from('artists').update(patch).eq('id', id)).error,
+      remove: async (id) => !(await db.from('artists').delete().eq('id', id)).error,
+    };
+    let consoleApi: ReturnType<typeof startConsole> | null = null;
+
+    const enter = async (email: string) => {
+      const { data: isAdmin, error } = await db.rpc('is_admin');
+      if (error || !isAdmin) {
+        await db.auth.signOut();
+        $('[data-login-err]').textContent = T.errNotAdmin;
+        show('login');
+        return;
+      }
+      consoleApi ??= startConsole(api, email);
+      $('[data-who]').textContent = email;
+      show('console');
+      consoleApi.load();
+    };
+
+    db.auth.getSession().then(({ data }) => {
+      if (data.session) enter(data.session.user.email ?? '');
+      else show('login');
+    });
+
+    const loginForm = $<HTMLFormElement>('[data-login]');
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(loginForm);
+      const btn = $<HTMLButtonElement>('[data-login-btn]');
+      const err = $('[data-login-err]');
+      btn.disabled = true; btn.textContent = T.loggingIn; err.textContent = '';
+      const { data, error } = await db.auth.signInWithPassword({ email: String(fd.get('email')), password: String(fd.get('password')) });
+      btn.disabled = false; btn.textContent = T.login;
+      if (error || !data.session) { err.textContent = T.errLogin; return; }
+      loginForm.reset();
+      enter(data.session.user.email ?? '');
+    });
+
+    $('[data-logout]').addEventListener('click', async () => {
+      await db.auth.signOut();
+      consoleApi?.reset();
+      show('login');
+    });
+  }
+</script>

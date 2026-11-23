@@ -16,7 +16,7 @@ export default defineConfig({
   integrations: [
     sitemap({
       i18n: { defaultLocale: 'es', locales: { es: 'es', en: 'en' } },
-      filter: (page) => !page.includes('/overseer/') && !page.includes('/asteria/') && !page.includes('/404'),
+      filter: (page) => !page.includes('/overseer/') && !page.includes('/profile/') && !page.includes('/asteria/') && !page.includes('/404'),
     }),
   ],
 });

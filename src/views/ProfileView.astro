@@ -1,0 +1,534 @@
+---
+// Mi perfil de artista: acceso con código por correo, estado de la solicitud y,
+// si está aprobada, edición del propio perfil con interruptores de privacidad.
+// En `npm run dev`, /profile/?mock muestra el editor con datos falsos (no existe en producción).
+import Base from '../layouts/Base.astro';
+import ChamberHead from '../components/ChamberHead.astro';
+import type { Lang } from '../data/site';
+import { ui } from '../i18n/ui';
+import { href } from '../i18n/paths';
+import { specialties, availability, experience } from '../data/registry';
+import { registryService, LIMITS } from '../lib/registry-service';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = ui[lang].profile;
+const r = ui[lang].registry;
+const connected = registryService.connected;
+const i18n = {
+  st: t.st, sending: t.sending, sendCode: t.sendCode, verifying: t.verifying, verify: t.verify,
+  saving: t.saving, save: t.save, saved: t.saved, savedHidden: t.savedHidden,
+  errSend: t.errSend, errRate: t.errRate, errCode: t.errCode, errLoad: t.errLoad,
+  errSave: t.errSave, errInvalid: t.errInvalid, errNotEditable: t.errNotEditable,
+  errRequired: r.errRequired, errInvalidField: r.errInvalid, errSpecs: r.errSpecs,
+  specs: Object.fromEntries(specialties.map((s) => [s.id, s.label[lang]])),
+  avail: Object.fromEntries(availability.map((a) => [a.id, a.tag[lang]])),
+  exp: experience.map((e) => e[lang]),
+  locale: lang === 'es' ? 'es-MX' : 'en-US',
+};
+---
+<Base lang={lang} slug="profile" title={t.title} description={t.description} noindex>
+  <ChamberHead lang={lang} crumb={t.crumb} glow="radial-gradient(ellipse 40% 100% at 10% 0%, #22080b, transparent 70%)">
+    <h1 slot="title">{t.h1[0]}<br />{t.h1[1]}</h1>
+    <p slot="lede" class="chamber-head__lede">{t.lede}</p>
+  </ChamberHead>
+
+  <div class="wrap pf" data-pf data-i18n={JSON.stringify(i18n)}>
+
+    {!connected && <div class="card notice"><p class="kicker">{t.loginK}</p><p class="muted">{t.offline}</p></div>}
+
+    <!-- ============ ACCESO ============ -->
+    <section class="card login" data-view="login" hidden>
+      <p class="kicker">{t.loginK}</p>
+      <p class="muted login__p">{t.loginP}</p>
+
+      <form class="login__step" data-step="mail" novalidate>
+        <label class="lab" for="pf-mail">{t.mail}</label>
+        <input id="pf-mail" class="in" type="email" name="email" autocomplete="email" placeholder={r.mailPh} required />
+        <button type="submit" class="btn btn--solid" data-send>{t.sendCode}</button>
+      </form>
+
+      <form class="login__step" data-step="code" novalidate hidden>
+        <p class="login__sent">{t.codeSent} <b data-sent-to></b></p>
+        <p class="muted login__hint">{t.codeHint}</p>
+        <label class="lab" for="pf-code">{t.code}</label>
+        <input id="pf-code" class="in in--code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="••••••" required />
+        <button type="submit" class="btn btn--solid" data-verify>{t.verify}</button>
+        <div class="login__links mono">
+          <button type="button" data-resend>{t.resend}</button>
+          <button type="button" data-other>{t.otherMail}</button>
+        </div>
+      </form>
+      <p class="pf__msg mono" data-login-msg aria-live="polite"></p>
+    </section>
+
+    <!-- ============ CON SESIÓN ============ -->
+    <div data-view="session" hidden>
+      <div class="bar">
+        <span class="mono bar__who"><span class="dot"></span>{t.session} · <b data-who></b></span>
+        <span class="pill mono" data-status hidden></span>
+        <button type="button" class="btn btn--ghost btn--sm" data-logout>{t.logout}</button>
+      </div>
+
+      <p class="mono pf__loading" data-state="loading">…</p>
+
+      <!-- Sin registro -->
+      <div class="card state" data-state="none" hidden>
+        <p class="kicker">{t.noneK}</p>
+        <p class="muted">{t.noneP}</p>
+        <a class="btn btn--solid btn--sm" href={href(lang, 'registry')}>{t.goRegister}</a>
+      </div>
+      <!-- En revisión -->
+      <div class="card state" data-state="pending" hidden>
+        <p class="kicker">{t.pendingK}</p>
+        <p class="muted">{t.pendingP}</p>
+      </div>
+      <!-- No aprobada -->
+      <div class="card state" data-state="rejected" hidden>
+        <p class="kicker">{t.rejectedK}</p>
+        <p class="muted">{t.rejectedP}</p>
+      </div>
+      <p class="pf__msg mono" data-load-msg aria-live="polite"></p>
+
+      <!-- Editor -->
+      <div class="editor" data-state="edit" hidden>
+        <form class="ed" data-form novalidate>
+          <div class="card ed__intro">
+            <p class="kicker">{t.activeK}</p>
+            <p class="muted">{t.activeP}</p>
+          </div>
+
+          <fieldset>
+            <legend>{t.secA}</legend>
+            <div class="grid2">
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-name">{r.name}</label><span class="fixed mono">{t.always}</span></div>
+                <input id="ed-name" name="name" class="in" type="text" maxlength={LIMITS.name} required /><span class="err"></span>
+              </div>
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-mail">{r.mail}</label><span class="fixed fixed--off mono">{t.never}</span></div>
+                <input id="ed-mail" class="in" type="email" data-email readonly aria-describedby="ed-mail-hint" />
+                <span class="hint" id="ed-mail-hint">{t.emailHint}</span>
+              </div>
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-loc">{r.loc}</label><label class="vis"><input type="checkbox" name="show_location" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+                <input id="ed-loc" name="location" class="in" type="text" maxlength={LIMITS.location} placeholder={r.locPh} />
+              </div>
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-exp">{r.exp}</label><label class="vis"><input type="checkbox" name="show_experience" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+                <select id="ed-exp" name="experience" class="in"><option value="">{r.expPh}</option>{experience.map((e, i) => <option value={String(i)}>{e[lang]}</option>)}</select>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset data-specs>
+            <legend>{t.secB}</legend>
+            <div class="lab-row lab-row--end"><span class="fixed mono">{t.always}</span></div>
+            <div class="chips">
+              {specialties.map((s) => (
+                <label class="chip spec"><input type="checkbox" name="specialties" value={s.id} class="sr-only" /><span class="chip__mark" aria-hidden="true"></span>{s.label[lang]}</label>
+              ))}
+            </div>
+            <span class="err"></span>
+          </fieldset>
+
+          <fieldset class="stack">
+            <legend>{t.secC}</legend>
+            <div class="field">
+              <div class="lab-row"><label class="lab" for="ed-bio">{r.bio}</label><label class="vis"><input type="checkbox" name="show_bio" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+              <textarea id="ed-bio" name="bio" class="in" rows="4" maxlength={LIMITS.bio} placeholder={r.bioPh}></textarea>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-port">{r.port}</label><label class="vis"><input type="checkbox" name="show_portfolio" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+                <input id="ed-port" name="portfolio" class="in" type="url" inputmode="url" maxlength={LIMITS.portfolio} placeholder={r.portPh} required /><span class="err"></span>
+              </div>
+              <div class="field">
+                <div class="lab-row"><label class="lab" for="ed-soc">{r.soc}</label><label class="vis"><input type="checkbox" name="show_socials" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+                <input id="ed-soc" name="socials" class="in" type="text" maxlength={LIMITS.socials} placeholder={r.socPh} />
+              </div>
+            </div>
+            <fieldset class="bare">
+              <div class="lab-row"><legend class="lab">{r.avail}</legend><label class="vis"><input type="checkbox" name="show_availability" /><span class="vis__ui" aria-hidden="true"></span><span class="vis__on mono">{t.isPublic}</span><span class="vis__off mono">{t.isPrivate}</span></label></div>
+              <div class="chips">
+                {availability.map((a) => (
+                  <label class="chip"><input type="radio" name="availability" value={a.id} class="sr-only" />{a.label[lang]}</label>
+                ))}
+              </div>
+            </fieldset>
+            <div class="field">
+              <div class="lab-row"><label class="lab" for="ed-more">{r.more}</label><span class="fixed fixed--off mono">{t.never}</span></div>
+              <textarea id="ed-more" name="additional" class="in" rows="3" maxlength={LIMITS.additional} placeholder={r.morePh}></textarea>
+              <span class="hint">{t.moreHint}</span>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>{t.secD}</legend>
+            <label class="vis vis--big">
+              <input type="checkbox" name="listed" />
+              <span class="vis__ui" aria-hidden="true"></span>
+              <span class="vis__text"><b>{t.listedK}</b><span class="muted">{t.listedP}</span></span>
+            </label>
+          </fieldset>
+
+          <div class="ed__save">
+            <button type="submit" class="btn btn--solid" data-save>{t.save}</button>
+            <span class="mono ed__updated" data-updated></span>
+          </div>
+          <p class="pf__msg mono" data-save-msg aria-live="polite"></p>
+        </form>
+
+        <!-- Vista previa: así te ve el público -->
+        <aside class="preview">
+          <p class="mono preview__k">{lang === 'es' ? 'ASÍ TE VE EL PÚBLICO' : 'HOW THE PUBLIC SEES YOU'}</p>
+          <div class="prof" data-preview>
+            <div class="prof__head">
+              <span class="prof__avatar" aria-hidden="true"></span>
+              <div><p class="prof__name" data-p="name"></p><p class="mono prof__meta" data-p="meta"></p></div>
+            </div>
+            <div class="prof__tags" data-p="tags"></div>
+            <p class="prof__bio" data-p="bio"></p>
+            <p class="mono prof__soc" data-p="soc"></p>
+            <div class="prof__foot">
+              <span class="mono prof__av" data-p="av"><span></span><b data-p="avTag"></b></span>
+              <span class="btn btn--ghost btn--sm" data-p="port">{r.portLink}</span>
+            </div>
+            <div class="prof__hidden mono" data-p="hidden">{t.listedK}: {t.isPrivate}</div>
+          </div>
+          <a class="mono preview__link" href={href(lang, 'registry') + '#directory'}>{t.viewDir} →</a>
+        </aside>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  [hidden] { display: none !important; }
+  .pf { display: flex; flex-direction: column; gap: 24px; padding-top: 28px; padding-bottom: 100px; }
+  .card { padding: 28px; border-radius: 20px; border: 1px solid var(--line); background: rgba(12, 13, 14, 0.85); display: flex; flex-direction: column; gap: 12px; }
+  .card .kicker { font-size: 11px; }
+  .card .muted { font-size: 14px; line-height: 1.6; }
+  .card .btn { align-self: flex-start; margin-top: 6px; }
+  .pf__msg { min-height: 1em; font-size: 11px; letter-spacing: 0.06em; text-transform: none; color: var(--red); }
+  .pf__msg:empty { display: none; }
+  .pf__msg[data-kind='ok'] { color: #4ade80; }
+  .pf__loading { color: var(--muted); }
+
+  /* Formularios (mismo lenguaje que el registro) */
+  .lab { display: block; margin-bottom: 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
+  .in {
+    width: 100%; min-height: 48px; padding: 12px 14px; background: var(--panel); border: 1px solid rgba(113, 128, 140, 0.35); border-radius: 0;
+    color: var(--white); font-family: var(--f-body); font-size: 16px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .in:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 55, 55, 0.15); }
+  .in::placeholder { color: #7d8992; }
+  .in[readonly] { color: var(--muted); border-style: dashed; }
+  .in[aria-invalid='true'] { border-color: var(--red); }
+  select.in { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--steel) 50%), linear-gradient(135deg, var(--steel) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 40px; }
+  select.in option { background: var(--panel); }
+  textarea.in { resize: vertical; }
+  .err { display: block; margin-top: 6px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--red); }
+  .err:empty { display: none; }
+  .hint { display: block; margin-top: 6px; font-size: 12px; color: var(--steel); }
+
+  /* Acceso */
+  .login { width: min(480px, 100%); }
+  .login__p { margin-bottom: 8px; }
+  .login__step { display: flex; flex-direction: column; gap: 10px; }
+  .login__step .btn { align-self: stretch; margin-top: 8px; }
+  .login__sent { font-size: 15px; } .login__sent b { color: var(--white); overflow-wrap: anywhere; }
+  .login__hint { font-size: 13px !important; }
+  .in--code { font-family: var(--f-mono); font-size: 24px; letter-spacing: 0.5em; text-align: center; }
+  .login__links { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .login__links button { padding: 0; background: none; border: 0; color: var(--muted-2); font-size: 11px; letter-spacing: 0.12em; cursor: pointer; }
+  .login__links button:hover { color: var(--red); }
+
+  /* Barra de sesión */
+  .bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .bar__who { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); text-transform: none; letter-spacing: 0.06em; }
+  .bar__who b { color: var(--white); font-weight: 500; overflow-wrap: anywhere; }
+  .bar__who .dot { background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+  .bar .btn { margin-left: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; font-size: 10px; letter-spacing: 0.12em; color: var(--c, var(--steel)); background: color-mix(in srgb, var(--c, #71808c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, #71808c) 35%, transparent); }
+  .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill[data-st='approved'], .pill[data-st='contacted'] { --c: #4ade80; }
+  .pill[data-st='new'], .pill[data-st='review'] { --c: #f5b942; }
+  .pill[data-st='rejected'] { --c: #6b7680; }
+  .state { width: min(640px, 100%); }
+
+  /* Editor */
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 32px; align-items: start; }
+  .ed { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+  fieldset { margin: 0; padding: 28px; border: 1px solid var(--line); min-width: 0; }
+  fieldset.bare { padding: 0; border: 0; }
+  legend { padding: 0 10px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--red); }
+  fieldset.bare legend { padding: 0; float: left; }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .lab-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; min-height: 26px; }
+  .lab-row .lab { margin: 0; }
+  .lab-row--end { justify-content: flex-end; margin-top: -6px; }
+  .fixed { font-size: 9px; letter-spacing: 0.14em; color: var(--steel); }
+  .fixed--off { color: #6b7680; }
+
+  /* Interruptor público / privado */
+  .vis { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; flex: none; }
+  .vis input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .vis__ui { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(113, 128, 140, 0.25); box-shadow: inset 0 0 0 1px rgba(113, 128, 140, 0.4); transition: background-color 0.25s; }
+  .vis__ui::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform 0.25s var(--ease), background-color 0.25s; }
+  .vis input:checked + .vis__ui { background: rgba(74, 222, 128, 0.22); box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.55); }
+  .vis input:checked + .vis__ui::after { transform: translateX(14px); background: #4ade80; }
+  .vis input:focus-visible + .vis__ui { outline: 2px solid var(--red); outline-offset: 3px; }
+  .vis__on, .vis__off { font-size: 9px; letter-spacing: 0.14em; min-width: 52px; }
+  .vis__on { display: none; color: #4ade80; } .vis__off { color: var(--muted); }
+  .vis input:checked ~ .vis__on { display: inline; } .vis input:checked ~ .vis__off { display: none; }
+  .vis--big { align-items: flex-start; gap: 16px; }
+  .vis--big .vis__ui { margin-top: 2px; }
+  .vis__text { display: flex; flex-direction: column; gap: 6px; }
+  .vis__text b { font-family: var(--f-mono); font-weight: 500; font-size: 12px; letter-spacing: 0.14em; }
+  .vis__text .muted { font-size: 13px; line-height: 1.55; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; clear: both; }
+  label.chip:has(input:checked) { --glass-tint: rgba(255, 55, 55, 0.2); --glass-rim: 0.85; --glass-rim-rgb: 255, 110, 110; --glass-drop: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 55, 55, 0.2); }
+  label.chip:has(input:checked) .chip__mark { background: var(--red); color: var(--red); }
+  label.chip:has(input:focus-visible) { outline: 2px solid var(--red); outline-offset: 3px; }
+
+  .ed__save { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .ed__save .btn { min-height: 56px; padding: 0 30px; font-size: 13px; }
+  .ed__updated { font-size: 10px; letter-spacing: 0.12em; color: var(--steel); }
+
+  /* Vista previa (mismo aspecto que las tarjetas del directorio) */
+  .preview { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .preview__k { font-size: 10px; letter-spacing: 0.18em; color: var(--red); }
+  .preview__link { font-size: 11px; letter-spacing: 0.12em; color: var(--muted-2); }
+  .prof { position: relative; padding: 24px; border: 1px solid rgba(113, 128, 140, 0.28); background: var(--panel); display: flex; flex-direction: column; gap: 16px; transition: opacity 0.3s, filter 0.3s; }
+  .prof.is-hidden { opacity: 0.35; filter: grayscale(1); }
+  .prof__head { display: flex; gap: 16px; align-items: center; }
+  .prof__avatar { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 1px solid rgba(113, 128, 140, 0.5); background: radial-gradient(circle at 50% 35%, #34383D, #111214 70%); }
+  .prof__name { font-family: var(--f-display); font-weight: 700; font-size: 26px; letter-spacing: 0.03em; overflow-wrap: anywhere; }
+  .prof__meta { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .prof__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prof__tags :global(span) { padding: 5px 9px; border: 1px solid var(--line-strong); font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--muted-2); }
+  .prof__bio { font-size: 13px; line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
+  .prof__soc { font-size: 11px; letter-spacing: 0.04em; text-transform: none; color: var(--muted-2); overflow-wrap: anywhere; }
+  .prof__bio:empty, .prof__meta:empty, .prof__soc:empty { display: none; }
+  .prof__foot { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid rgba(113, 128, 140, 0.2); }
+  .prof__av { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.14em; color: var(--red); }
+  .prof__av b { font-weight: inherit; }
+  .prof__av span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .prof__av[data-av='none'] { color: var(--muted); }
+  .prof__foot .btn { cursor: default; }
+  .prof__hidden { display: none; position: absolute; inset: auto 12px 12px auto; font-size: 9px; letter-spacing: 0.12em; color: var(--white); }
+  .prof.is-hidden + .prof__hidden, .prof.is-hidden .prof__hidden { display: block; }
+
+  @media (max-width: 960px) {
+    .editor { grid-template-columns: 1fr; }
+    .preview { position: static; order: -1; }
+  }
+  @media (max-width: 640px) {
+    fieldset { padding: 20px 16px; }
+    .grid2 { grid-template-columns: 1fr; }
+    .card { padding: 22px; }
+    .ed__save .btn { width: 100%; }
+    .bar .btn { margin-left: 0; }
+  }
+</style>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  import { validateProfile } from '../lib/registry-service';
+  import {
+    requestCode, verifyCode, currentEmail, onSignedIn, signOut, getMyProfile, saveMyProfile,
+    EDITABLE, type MyProfile, type ProfileUpdate,
+  } from '../lib/artist-account';
+
+  const root = document.querySelector<HTMLElement>('[data-pf]')!;
+  const T = JSON.parse(root.dataset.i18n!);
+  const $ = <E extends HTMLElement = HTMLElement>(sel: string, el: ParentNode = root) => el.querySelector<E>(sel)!;
+  const $$ = <E extends HTMLElement = HTMLElement>(sel: string, el: ParentNode = root) => [...el.querySelectorAll<E>(sel)];
+  const say = (node: HTMLElement, text: string, kind: 'ok' | 'err' = 'err') => { node.textContent = text; node.dataset.kind = kind; };
+
+  const views = { login: $('[data-view="login"]'), session: $('[data-view="session"]') };
+  const show = (v: 'login' | 'session') => { views.login.hidden = v !== 'login'; views.session.hidden = v !== 'session'; };
+  const state = (s: 'loading' | 'none' | 'pending' | 'rejected' | 'edit') => $$('[data-state]').forEach((el) => { el.hidden = el.dataset.state !== s; });
+
+  const form = $<HTMLFormElement>('[data-form]');
+  const field = <E extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(name: string) => form.elements.namedItem(name) as E;
+  const VIS = ['show_location', 'show_experience', 'show_bio', 'show_portfolio', 'show_socials', 'show_availability', 'listed'] as const;
+  let saveImpl: ((p: ProfileUpdate) => Promise<MyProfile>) | null = null;
+
+  /* ---------- Rellenar y leer el editor ---------- */
+  const fill = (p: MyProfile) => {
+    field('name').value = p.name;
+    $<HTMLInputElement>('[data-email]').value = p.email;
+    field('location').value = p.location ?? '';
+    field('experience').value = p.experience != null ? String(p.experience) : '';
+    $$<HTMLInputElement>('input[name=specialties]', form).forEach((c) => { c.checked = p.specialties.includes(c.value); });
+    field('bio').value = p.bio ?? '';
+    field('portfolio').value = p.portfolio;
+    field('socials').value = p.socials ?? '';
+    $$<HTMLInputElement>('input[name=availability]', form).forEach((c) => { c.checked = c.value === p.availability; });
+    field('additional').value = p.additional ?? '';
+    VIS.forEach((k) => { (field(k) as HTMLInputElement).checked = p[k]; });
+    $('[data-updated]').textContent = p.updated_at ? `${new Date(p.updated_at).toLocaleString(T.locale, { dateStyle: 'medium', timeStyle: 'short' })}` : '';
+    preview();
+  };
+
+  const read = (): ProfileUpdate => {
+    const fd = new FormData(form);
+    const s = (k: string) => String(fd.get(k) ?? '');
+    const update = {
+      name: s('name'), location: s('location'), experience: s('experience'), specialties: fd.getAll('specialties').map(String),
+      bio: s('bio'), portfolio: s('portfolio'), socials: s('socials'), availability: s('availability') || 'free', additional: s('additional'),
+    } as ProfileUpdate;
+    VIS.forEach((k) => { (update as any)[k] = (field(k) as HTMLInputElement).checked; });
+    return update;
+  };
+
+  /* ---------- Vista previa en vivo ---------- */
+  const preview = () => {
+    const p = read();
+    const card = $('[data-preview]');
+    const P = (k: string) => $(`[data-p="${k}"]`, card);
+    card.classList.toggle('is-hidden', !p.listed);
+    P('name').textContent = p.name || '—';
+    P('meta').textContent = [p.show_location ? p.location : '', p.show_experience && p.experience ? T.exp[Number(p.experience)] : ''].filter(Boolean).join(' · ');
+    P('tags').replaceChildren(...p.specialties.map((id) => { const s = document.createElement('span'); s.textContent = T.specs[id] ?? id; return s; }));
+    P('bio').textContent = p.show_bio ? p.bio : '';
+    P('soc').textContent = p.show_socials ? p.socials : '';
+    P('av').hidden = !p.show_availability;
+    P('av').dataset.av = p.availability; P('avTag').textContent = T.avail[p.availability] ?? '';
+    P('port').hidden = !p.show_portfolio || !p.portfolio;
+  };
+  form.addEventListener('input', preview);
+  form.addEventListener('change', preview);
+
+  /* ---------- Guardar ---------- */
+  const showErrors = (errors: Record<string, string>) => {
+    for (const name of ['name', 'portfolio']) {
+      const input = field<HTMLInputElement>(name);
+      const err = input.parentElement!.querySelector<HTMLElement>('.err')!;
+      const e = errors[name];
+      input.setAttribute('aria-invalid', String(!!e));
+      err.textContent = e ? (e === 'required' ? T.errRequired : T.errInvalidField) : '';
+    }
+    $(':scope > .err', $('[data-specs]')).textContent = errors.specialties ? T.errSpecs : '';
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('[data-save-msg]'); msg.textContent = '';
+    const data = read();
+    const errors = validateProfile({ ...data, email: $<HTMLInputElement>('[data-email]').value });
+    delete errors.email;
+    showErrors(errors);
+    if (Object.keys(errors).length) { form.querySelector<HTMLElement>('[aria-invalid=true]')?.focus(); say(msg, T.errInvalid); return; }
+    if (!saveImpl) return;
+    const btn = $<HTMLButtonElement>('[data-save]');
+    btn.disabled = true; btn.textContent = T.saving;
+    try {
+      const saved = await saveImpl(data);
+      fill(saved);
+      say(msg, saved.listed ? T.saved : T.savedHidden, 'ok');
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      say(msg, code === 'INVALID' ? T.errInvalid : code === 'NOT_EDITABLE' ? T.errNotEditable : T.errSave);
+    } finally {
+      btn.disabled = false; btn.textContent = T.save;
+    }
+  });
+
+  /* ---------- Mostrar el estado del registro ---------- */
+  const render = (p: MyProfile | null) => {
+    const pill = $('[data-status]');
+    pill.hidden = !p;
+    if (p) { pill.dataset.st = p.status; pill.textContent = T.st[p.status]; }
+    if (!p) state('none');
+    else if (EDITABLE.includes(p.status)) { fill(p); state('edit'); }
+    else state(p.status === 'rejected' ? 'rejected' : 'pending');
+  };
+
+  /* ---------- Modo demostración (sólo `npm run dev`, con ?mock) ---------- */
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('mock')) {
+    let mock: MyProfile = {
+      id: '1', created_at: new Date().toISOString(), updated_at: null, status: 'approved', name: 'Valeria Ríos', email: 'valeria@example.com',
+      location: 'Ciudad de México, MX', experience: 1, specialties: ['model', 'tex', 'char'], bio: 'Artista 3D enfocada en personajes estilizados.',
+      portfolio: 'https://www.artstation.com/example', socials: '@valeria.3d', availability: 'free', additional: 'Blender, ZBrush.',
+      listed: true, show_location: true, show_experience: true, show_bio: true, show_portfolio: true, show_socials: false, show_availability: true,
+    };
+    const st = new URLSearchParams(location.search).get('st');
+    if (st) mock.status = st as MyProfile['status'];
+    saveImpl = async (p) => (mock = { ...mock, ...p, experience: p.experience ? Number(p.experience) : null, updated_at: new Date().toISOString() });
+    $('[data-who]').textContent = mock.email;
+    show('session');
+    render(mock);
+  } else if (supabase) {
+    saveImpl = saveMyProfile;
+
+    const load = async () => {
+      show('session');
+      state('loading');
+      $('[data-who]').textContent = (await currentEmail()) ?? '';
+      try { render(await getMyProfile()); }
+      catch { state('none'); $$('[data-state]').forEach((el) => { el.hidden = true; }); say($('[data-load-msg]'), T.errLoad); }
+    };
+
+    currentEmail().then((email) => (email ? load() : show('login')));
+    onSignedIn(() => { if (views.session.hidden) load(); }); // entrar con el enlace del correo
+
+    /* Acceso: paso 1 (correo) y paso 2 (código) */
+    const stepMail = $<HTMLFormElement>('[data-step="mail"]');
+    const stepCode = $<HTMLFormElement>('[data-step="code"]');
+    const msg = $('[data-login-msg]');
+    let email = '';
+
+    const send = async (btn: HTMLButtonElement | null) => {
+      msg.textContent = '';
+      if (btn) { btn.disabled = true; btn.textContent = T.sending; }
+      try {
+        await requestCode(email);
+        stepMail.hidden = true; stepCode.hidden = false;
+        $('[data-sent-to]').textContent = email;
+        $<HTMLInputElement>('#pf-code').focus();
+      } catch (err) {
+        say(msg, err instanceof Error && err.message === 'RATE_LIMIT' ? T.errRate : T.errSend);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = T.sendCode; }
+      }
+    };
+
+    stepMail.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = $<HTMLInputElement>('#pf-mail');
+      email = input.value.trim().toLowerCase();
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      input.setAttribute('aria-invalid', String(!ok));
+      if (!ok) { say(msg, T.errInvalidField); input.focus(); return; }
+      send($<HTMLButtonElement>('[data-send]'));
+    });
+
+    stepCode.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = $<HTMLInputElement>('#pf-code').value.replace(/\s/g, '');
+      if (!/^\d{6,10}$/.test(code)) { say(msg, T.errCode); return; }
+      const btn = $<HTMLButtonElement>('[data-verify]');
+      btn.disabled = true; btn.textContent = T.verifying; msg.textContent = '';
+      try {
+        await verifyCode(email, code);
+        stepCode.reset();
+        load();
+      } catch { say(msg, T.errCode); }
+      finally { btn.disabled = false; btn.textContent = T.verify; }
+    });
+
+    $('[data-resend]').addEventListener('click', () => send(null));
+    $('[data-other]').addEventListener('click', () => { stepCode.hidden = true; stepMail.hidden = false; msg.textContent = ''; $<HTMLInputElement>('#pf-mail').focus(); });
+
+    $('[data-logout]').addEventListener('click', async () => {
+      await signOut();
+      stepCode.hidden = true; stepMail.hidden = false;
+      show('login');
+    });
+  }
+</script>

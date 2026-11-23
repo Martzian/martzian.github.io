@@ -5,6 +5,7 @@ import type { Lang } from '../data/site';
 import { ui } from '../i18n/ui';
 import { specialties, availability, experience, sampleArtists } from '../data/registry';
 import { registryService, LIMITS } from '../lib/registry-service';
+import { href } from '../i18n/paths';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -91,6 +92,11 @@ const dirI18n = {
         <p class="kicker" style="font-size:11px">{t.protoK}</p>
         <ol>{t.steps.map((s, i) => <li><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}</ol>
       </div>
+      <a class="access" href={href(lang, 'profile')}>
+        <p class="mono access__k">{t.accessK}</p>
+        <p class="access__p">{t.accessP}</p>
+        <span class="mono access__link">{t.accessLink}</span>
+      </a>
       <div class="sys">
         <p class="mono" style="font-size:11px;color:var(--white);margin-bottom:10px">{t.sysK}</p>
         <p>{connected ? t.sysPOnline : t.sysP}</p>
@@ -139,6 +145,7 @@ const dirI18n = {
         </div>
         <div class="prof__tags" data-f="tags"></div>
         <p class="prof__bio" data-f="bio"></p>
+        <p class="mono prof__soc" data-f="soc"></p>
         <div class="prof__foot">
           <span class="mono prof__av" data-f="av"><span></span><b data-f="avTag"></b></span>
           <a class="btn btn--ghost btn--sm" data-f="port" target="_blank" rel="noopener nofollow ugc">{t.portLink}</a>
@@ -196,6 +203,11 @@ const dirI18n = {
   .proto ol { margin: 18px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 18px; }
   .proto li { display: flex; gap: 14px; font-size: 14px; line-height: 1.5; color: var(--muted-2); }
   .proto li span { font-family: var(--f-display); font-weight: 800; font-size: 28px; line-height: 1; color: var(--red); }
+  .access { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--line-strong); color: var(--white); transition: border-color 0.25s, background-color 0.25s; }
+  .access:hover { border-color: var(--red); background: rgba(255, 55, 55, 0.05); color: var(--white); }
+  .access__k { font-size: 11px; letter-spacing: 0.18em; color: var(--red); }
+  .access__p { font-size: 13px; line-height: 1.6; color: var(--muted); }
+  .access__link { font-size: 11px; letter-spacing: 0.14em; }
   .sys { padding: 24px; border: 1px dashed var(--line-strong); font-size: 13px; line-height: 1.6; color: var(--muted); }
 
   .dir { padding-top: 20px; padding-bottom: 100px; }
@@ -221,7 +233,9 @@ const dirI18n = {
   .prof__av[data-av='none'] { color: var(--muted); }
   .prof__foot span.btn { opacity: 0.6; cursor: default; }
   .prof__av b { font-weight: inherit; }
-  .prof__bio:empty, .prof__meta:empty { display: none; }
+  .prof__bio:empty, .prof__meta:empty, .prof__soc:empty { display: none; }
+  .prof__soc { font-size: 11px; letter-spacing: 0.04em; text-transform: none; color: var(--muted-2); overflow-wrap: anywhere; }
+  .prof__foot [hidden] { display: none; }
   .dir__empty { padding: 40px; text-align: center; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
 
   @media (max-width: 1100px) { .dir__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -361,9 +375,11 @@ const dirI18n = {
         $('meta').textContent = [p.location, p.experience != null ? i18n.exp[p.experience] : null].filter(Boolean).join(' · ');
         $('bio').textContent = p.bio ?? '';
         tags.forEach((label) => { const s = document.createElement('span'); s.className = 'mono'; s.textContent = label; $('tags').append(s); });
-        $('av').dataset.av = p.availability;
-        $('avTag').textContent = i18n.avail[p.availability] ?? '';
-        ($('port') as HTMLAnchorElement).href = /^https?:\/\//i.test(p.portfolio) ? p.portfolio : '#';
+        $('soc').textContent = p.socials ?? '';
+        if (p.availability) { $('av').dataset.av = p.availability; $('avTag').textContent = i18n.avail[p.availability] ?? ''; }
+        else $('av').hidden = true;
+        const port = $('port') as HTMLAnchorElement;
+        if (p.portfolio && /^https?:\/\//i.test(p.portfolio)) port.href = p.portfolio; else port.hidden = true;
         li.dataset.tags = p.specialties.join(' ');
         li.dataset.search = [p.name, p.location ?? '', ...tags].join(' ').toLowerCase();
         return li;
