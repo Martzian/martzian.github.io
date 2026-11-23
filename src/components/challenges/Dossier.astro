@@ -210,7 +210,7 @@ const colsM = criteria.map((k) => (k.type === 'time' ? '86px' : '44px')).join(' 
   .stat.is-decisive { --c: var(--red); --ic: var(--red); background: rgba(255, 55, 55, 0.12); }
 
   .dossier__cta { width: 100%; }
-  .dossier .btn[disabled] { background: transparent; border-color: var(--line-strong); color: var(--muted); }
+  .dossier .btn[disabled] { --glass-tint: transparent; --glass-rim: 0.3; color: var(--muted); }
   .dossier__pending { margin: 0; padding: 16px; border: 1px dashed var(--line-strong); font-size: 12px; letter-spacing: 0.1em; line-height: 1.5; color: var(--muted); }
 
 .rules__toggle { min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 10px; border-radius: 999px; background: transparent; border: 1px solid rgba(113, 128, 140, 0.35); color: var(--white); font-size: 11px; letter-spacing: 0.16em; cursor: pointer; transition: border-color 0.25s, background 0.25s; }

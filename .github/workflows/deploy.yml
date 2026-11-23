@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build
+        env:
+          # Configúralas en GitHub → Settings → Secrets and variables → Actions → Variables
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           REPO="${GITHUB_REPOSITORY#*/}"
