@@ -1,0 +1,39 @@
+name: Supabase heartbeat
+
+# Los proyectos gratuitos de Supabase se pausan tras 7 días sin actividad.
+# Este workflow hace una consulta real a la base de datos cada 3 días para mantenerlo activo.
+# Usa las mismas variables del despliegue (Settings → Secrets and variables → Actions → Variables).
+# La consulta usa la clave pública: sólo puede leer perfiles aprobados, igual que cualquier visitante.
+
+on:
+  schedule:
+    - cron: '17 15 */3 * *' # días 1, 4, 7… de cada mes a las 15:17 UTC (minuto impar: GitHub se satura en :00)
+  workflow_dispatch: # botón "Run workflow" para probarlo a mano
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar la base de datos
+        env:
+          URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Faltan las variables PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+            exit 1
+          fi
+          for intento in 1 2 3; do
+            code=$(curl -s -o respuesta.json -w '%{http_code}' --max-time 30 \
+              "$URL/rest/v1/artists?select=id&limit=1" \
+              -H "apikey: $KEY")
+            echo "Intento $intento → HTTP $code"
+            if [ "$code" = "200" ]; then echo "Supabase activo ✔"; exit 0; fi
+            sleep 20
+          done
+          cat respuesta.json
+          echo "::error::Supabase no respondió 200 (¿proyecto pausado? Reactívalo desde el panel de Supabase)"
+          exit 1
